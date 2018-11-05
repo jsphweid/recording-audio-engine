@@ -20,7 +20,7 @@ This library does concern itself with managing a complicated state. You can acce
 
 - I'm using karma for tests (as opposed to the much more light weight and easy to use `jest`) because it runs tests in the browser as opposed to node. This is important for this project because it relies heavily on the Web Audio API. There are various libraries for mocking the Web Audio API in node but none of these suffice for the type of tests that I want to write (and many are incomplete...)
 
-```
+```bash
 npm run test # run tests once
 npm run test:dev # run tests in watch mode
 ```
