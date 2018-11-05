@@ -2,7 +2,6 @@
   "name": "audio-engine",
   "version": "0.0.1",
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
-  "main": "dist/index.js",
   "dependencies": {},
   "devDependencies": {
     "@types/jasmine": "^2.8.9",
@@ -21,6 +20,7 @@
     "web-audio-mock-api": "^1.0.0"
   },
   "scripts": {
+    "build": "rm -rf dist && tsc",
     "test": "RUN_ONCE=true karma start",
     "test:dev": "karma start"
   },

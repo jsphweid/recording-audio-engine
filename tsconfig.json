@@ -3,6 +3,7 @@
     "target": "es5",
     "lib": ["es2018", "dom"],
     "types": ["node", "jasmine"],
+    "outDir": "dist",
     "sourceMap": true,
     "module": "commonjs",
     "moduleResolution": "node",
@@ -12,7 +13,8 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "declaration": true
   },
   "include": ["./src/**/*"]
 }
