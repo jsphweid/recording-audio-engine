@@ -1,7 +1,9 @@
-import { audioContextInstance } from '.'
-import Recording from './recording'
+import audioContextInstance from './audio-context'
+import MonoRecording from './mono-recording'
 
-export function makeSynthesizedRecording(recordings: Recording[]): Recording {
+export function makeSynthesizedMonoRecording(
+  recordings: MonoRecording[]
+): MonoRecording {
   const buffers = recordings.map(({ audioBuffer }) => audioBuffer)
   let maxChannels = 0
   let maxDuration = 0
@@ -37,5 +39,5 @@ export function makeSynthesizedRecording(recordings: Recording[]): Recording {
     }
   }
 
-  return new Recording(outBuffer.getChannelData(0))
+  return new MonoRecording(outBuffer.getChannelData(0))
 }

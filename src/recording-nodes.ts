@@ -1,4 +1,4 @@
-import { audioContextInstance } from '.'
+import audioContextInstance from './audio-context'
 import { bufferSize } from './constants'
 import { flattenFloat32Arrays } from './helpers'
 
@@ -22,8 +22,8 @@ export function connectRecordingNodes(): Promise<void> {
   })
 }
 
-export function disconnectRecordingNodes(): Float32Array {
+export function disconnectRecordingNodes(): Float32Array | null {
   if (source) source.disconnect()
   if (processor) processor.disconnect()
-  return flattenFloat32Arrays(tmpAudioData)
+  return tmpAudioData.length ? flattenFloat32Arrays(tmpAudioData) : null
 }

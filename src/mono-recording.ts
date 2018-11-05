@@ -1,7 +1,7 @@
-import { float32ToAudioBuffer } from './audio-context-helpers'
-import { makeWavBlobFromFloat32Arr } from './blobs'
+import { float32ToMonoAudioBuffer } from './audio-context/utils'
+import { encodeMono } from './encoders/wav'
 
-export default class Recording {
+export default class MonoRecording {
   public rawData: Float32Array
   constructor(rawData: Float32Array) {
     // some validation that makes sure none of the getters will fail
@@ -9,10 +9,10 @@ export default class Recording {
   }
 
   public get wavBlob(): Blob {
-    return makeWavBlobFromFloat32Arr(this.rawData)
+    return encodeMono(this.rawData)
   }
 
   public get audioBuffer(): AudioBuffer {
-    return float32ToAudioBuffer(this.rawData)
+    return float32ToMonoAudioBuffer(this.rawData)
   }
 }

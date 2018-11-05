@@ -1,6 +1,8 @@
-import { audioContextInstance } from '.'
+import audioContextInstance from './instance'
 
-export function float32ToAudioBuffer(float32Data: Float32Array): AudioBuffer {
+export function float32ToMonoAudioBuffer(
+  float32Data: Float32Array
+): AudioBuffer {
   const finalBuffer = audioContextInstance.createBuffer(
     1,
     float32Data.length,

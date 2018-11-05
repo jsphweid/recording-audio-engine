@@ -1,7 +1,11 @@
 import audioContextInstance from './audio-context'
-import AudioEngine from './audio-engine'
-import { makeSynthesizedRecording } from './synthesize'
+import { latestRecording, startRecording, stopRecording } from './audio-engine'
+import MonoRecording from './mono-recording'
 
-const audioEngineInstance = new AudioEngine()
-
-export { audioEngineInstance, audioContextInstance, makeSynthesizedRecording }
+export {
+  audioContextInstance,
+  startRecording,
+  stopRecording,
+  latestRecording,
+  MonoRecording
+}

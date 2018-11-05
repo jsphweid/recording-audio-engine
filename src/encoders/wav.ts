@@ -1,14 +1,14 @@
-import { audioContextInstance } from '.'
+import audioContextInstance from '../audio-context'
 
-export default class WavEncoder {
+class WavEncoder {
   private sampleRate: number
   private numChannels: number
   private numSamples: number
   private dataViews: DataView[]
 
-  constructor(numChannels: number) {
-    this.sampleRate = audioContextInstance.sampleRate
+  constructor(numChannels: number, samplingRate: number) {
     this.numChannels = numChannels
+    this.sampleRate = samplingRate
     this.numSamples = 0
     this.dataViews = []
   }
@@ -56,7 +56,7 @@ export default class WavEncoder {
     return blob
   }
 
-  public cleanup(): void {
+  private cleanup(): void {
     delete this.dataViews
     this.dataViews = []
   }
@@ -67,4 +67,13 @@ export default class WavEncoder {
       view.setUint8(offset + i, str.charCodeAt(i))
     }
   }
+}
+
+export function encodeMono(
+  data: Float32Array,
+  samplingRate: number = audioContextInstance.sampleRate
+): Blob {
+  const wavEncoder = new WavEncoder(1, samplingRate)
+  wavEncoder.encode([data])
+  return wavEncoder.finish()
 }

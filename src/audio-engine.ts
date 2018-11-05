@@ -1,10 +1,10 @@
-import Recording from './recording'
+import MonoRecording from './mono-recording'
 import {
   connectRecordingNodes,
   disconnectRecordingNodes
 } from './recording-nodes'
 
-export let latestRecording: Recording | null = null
+export let latestRecording: MonoRecording | null = null
 
 export function startRecording(): void {
   connectRecordingNodes()
@@ -12,5 +12,5 @@ export function startRecording(): void {
 
 export function stopRecording(): void {
   const audioData = disconnectRecordingNodes()
-  latestRecording = new Recording(audioData)
+  latestRecording = audioData ? new MonoRecording(audioData) : null
 }

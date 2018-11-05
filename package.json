@@ -1,0 +1,42 @@
+{
+  "name": "audio-engine",
+  "version": "0.0.1",
+  "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
+  "main": "dist/index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jasmine": "^2.8.9",
+    "@types/node": "^10.12.2",
+    "jasmine": "^3.3.0",
+    "jasmine-core": "^3.3.0",
+    "karma": "^3.1.1",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-jasmine": "^1.1.2",
+    "karma-typescript": "^3.0.13",
+    "prettier": "^1.14.3",
+    "tslint": "^5.11.0",
+    "tslint-config-prettier": "^1.15.0",
+    "typescript": "^3.1.6",
+    "web-audio-api": "^0.2.2",
+    "web-audio-mock-api": "^1.0.0"
+  },
+  "scripts": {
+    "test": "RUN_ONCE=true karma start",
+    "test:dev": "karma start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jsphweid/audio-engine.git"
+  },
+  "keywords": [
+    "audio engine",
+    "typescript",
+    "javascript"
+  ],
+  "author": "Joseph Weidinger",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jsphweid/audio-engine/issues"
+  },
+  "homepage": "https://github.com/jsphweid/audio-engine#readme"
+}
