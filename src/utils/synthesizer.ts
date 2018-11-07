@@ -1,5 +1,5 @@
-import audioContextInstance from './audio-context'
-import MonoRecording from './mono-recording'
+import audioContextInstance from '../audio-context'
+import MonoRecording from '../mono-recording'
 
 export function makeSynthesizedMonoRecording(
   recordings: MonoRecording[]

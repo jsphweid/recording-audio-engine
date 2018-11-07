@@ -1,4 +1,4 @@
-import { exportBlobAsBase64 } from '../helpers'
+import { exportBlobAsBase64 } from '../utils'
 import { encodeMono } from './wav'
 
 describe('wav encoder', () => {

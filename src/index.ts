@@ -1,11 +1,6 @@
-import audioContextInstance from './audio-context'
-import { latestRecording, startRecording, stopRecording } from './audio-engine'
+import AudioContextInstance from './audio-context'
 import MonoRecording from './mono-recording'
+import * as RecordingEngine from './recording-engine'
+import * as Utils from './utils'
 
-export {
-  audioContextInstance,
-  startRecording,
-  stopRecording,
-  latestRecording,
-  MonoRecording
-}
+export { AudioContextInstance, Utils, MonoRecording, RecordingEngine }

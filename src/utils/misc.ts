@@ -1,4 +1,4 @@
-import audioContextInstance from './instance'
+import audioContextInstance from '../audio-context'
 
 export function float32ToMonoAudioBuffer(
   float32Data: Float32Array
@@ -22,5 +22,20 @@ export function decodeAudioData(
       (buffer: AudioBuffer) => resolve(buffer),
       (error: any) => reject(error)
     )
+  })
+}
+
+export function exportBlobAsBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader()
+    fileReader.onloadend = () => {
+      const result = fileReader.result as string
+      if (result) {
+        resolve(result)
+      } else {
+        reject('Could not convert blob to base 64 string.')
+      }
+    }
+    fileReader.readAsDataURL(blob)
   })
 }

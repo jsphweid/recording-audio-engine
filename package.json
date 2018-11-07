@@ -1,5 +1,5 @@
 {
-  "name": "audio-engine",
+  "name": "recording-audio-engine",
   "version": "0.0.1",
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
   "dependencies": {},
@@ -35,6 +35,8 @@
   ],
   "author": "Joseph Weidinger",
   "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bugs": {
     "url": "https://github.com/jsphweid/audio-engine/issues"
   },

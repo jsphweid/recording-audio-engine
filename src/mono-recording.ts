@@ -1,5 +1,7 @@
-import { float32ToMonoAudioBuffer } from './audio-context/utils'
 import { encodeMono } from './encoders/wav'
+import { float32ToMonoAudioBuffer } from './utils'
+
+type MonoProcessor = (arr: Float32Array) => Float32Array
 
 export default class MonoRecording {
   public rawData: Float32Array
@@ -14,5 +16,9 @@ export default class MonoRecording {
 
   public get audioBuffer(): AudioBuffer {
     return float32ToMonoAudioBuffer(this.rawData)
+  }
+
+  public applyMonoProcessors(processors: MonoProcessor[]): void {
+    processors.forEach(processor => (this.rawData = processor(this.rawData)))
   }
 }

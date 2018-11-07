@@ -1,4 +1,4 @@
-import MonoRecording from './mono-recording'
+import MonoRecording from '../mono-recording'
 import { makeSynthesizedMonoRecording } from './synthesizer'
 
 describe('synthesizer', () => {
