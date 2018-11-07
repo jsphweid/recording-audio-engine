@@ -21,12 +21,14 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "test": "RUN_ONCE=true karma start",
-    "test:dev": "karma start"
+    "prepublish": "npm run test",
+    "test": "npm run lint && RUN_ONCE=true karma start",
+    "test:dev": "karma start",
+    "lint": "tslint -p tsconfig.json"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jsphweid/audio-engine.git"
+    "url": "git+https://github.com/jsphweid/recording-audio-engine.git"
   },
   "keywords": [
     "audio engine",
@@ -38,7 +40,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bugs": {
-    "url": "https://github.com/jsphweid/audio-engine/issues"
+    "url": "https://github.com/jsphweid/recording-audio-engine/issues"
   },
-  "homepage": "https://github.com/jsphweid/audio-engine#readme"
+  "homepage": "https://github.com/jsphweid/recording-audio-engine#readme"
 }
