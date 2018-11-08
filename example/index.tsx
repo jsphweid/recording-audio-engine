@@ -15,8 +15,8 @@ class Example extends React.Component<any, ExampleState> {
   }
 
   private handleStopRecording() {
-    RecordingAudioEngine.RecordingEngine.stopRecording()
-    const latestRecording = RecordingAudioEngine.RecordingEngine.latestRecording
+    RecordingAudioEngine.Recording.stopRecording()
+    const latestRecording = RecordingAudioEngine.Recording.latestRecording
     if (latestRecording) {
       this.setState({
         recordings: [...this.state.recordings, latestRecording]
@@ -25,7 +25,7 @@ class Example extends React.Component<any, ExampleState> {
   }
 
   private renderStartStop() {
-    const { startRecording } = RecordingAudioEngine.RecordingEngine
+    const { startRecording } = RecordingAudioEngine.Recording
     return (
       <div>
         <button onClick={() => startRecording()}>start recording</button>
@@ -39,7 +39,10 @@ class Example extends React.Component<any, ExampleState> {
   private renderRecordings() {
     if (!this.state.recordings) return null
     const lis = this.state.recordings.map((recording, i) => (
-      <li key={i} onClick={() => console.log(recording)}>
+      <li
+        key={i}
+        onClick={() => RecordingAudioEngine.Playing.playRecording(recording)}
+      >
         Recording {i + 1} made on {`${recording.createDate}`}
       </li>
     ))
