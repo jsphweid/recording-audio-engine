@@ -5,9 +5,11 @@ type MonoProcessor = (arr: Float32Array) => Float32Array
 
 export default class MonoRecording {
   public rawData: Float32Array
+  public createDate: Date
   constructor(rawData: Float32Array) {
     // some validation that makes sure none of the getters will fail
     this.rawData = rawData
+    this.createDate = new Date()
   }
 
   public get wavBlob(): Blob {

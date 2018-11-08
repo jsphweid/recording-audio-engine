@@ -40,7 +40,7 @@ class Example extends React.Component<any, ExampleState> {
     if (!this.state.recordings) return null
     const lis = this.state.recordings.map((recording, i) => (
       <li key={i} onClick={() => console.log(recording)}>
-        Recording {i + 1}
+        Recording {i + 1} made on {`${recording.createDate}`}
       </li>
     ))
     return <ul>{lis}</ul>
