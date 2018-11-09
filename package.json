@@ -1,6 +1,6 @@
 {
   "name": "recording-audio-engine",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
   "dependencies": {},
   "devDependencies": {
