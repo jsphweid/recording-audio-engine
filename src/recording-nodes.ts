@@ -1,5 +1,5 @@
 import audioContextInstance from './audio-context'
-import { bufferSize } from './constants'
+import { BUFFER_SIZE } from './constants'
 import { flattenFloat32Arrays } from './helpers'
 
 let source: MediaStreamAudioSourceNode | undefined
@@ -11,7 +11,7 @@ export function connectRecordingNodes(): Promise<void> {
   return new Promise(resolve => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       source = audioContextInstance.createMediaStreamSource(stream)
-      processor = audioContextInstance.createScriptProcessor(bufferSize, 1, 1)
+      processor = audioContextInstance.createScriptProcessor(BUFFER_SIZE, 1, 1)
       processor.onaudioprocess = (event: AudioProcessingEvent) => {
         tmpAudioData.push(event.inputBuffer.getChannelData(0).slice())
       }
@@ -22,8 +22,8 @@ export function connectRecordingNodes(): Promise<void> {
   })
 }
 
-export function disconnectRecordingNodes(): Float32Array | null {
+export function disconnectRecordingNodes(): Float32Array {
   if (source) source.disconnect()
   if (processor) processor.disconnect()
-  return tmpAudioData.length ? flattenFloat32Arrays(tmpAudioData) : null
+  return flattenFloat32Arrays(tmpAudioData)
 }

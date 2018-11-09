@@ -4,32 +4,34 @@ import * as RecordingAudioEngine from '../src'
 
 interface ExampleState {
   recordings: RecordingAudioEngine.MonoRecording[]
+  maxRecordingTime: number
 }
 
 class Example extends React.Component<any, ExampleState> {
   constructor(props: any) {
     super(props)
     this.state = {
-      recordings: []
+      recordings: [],
+      maxRecordingTime: 5
     }
   }
 
-  private handleStopRecording() {
-    RecordingAudioEngine.Recording.stopRecording()
-    const latestRecording = RecordingAudioEngine.Recording.latestRecording
-    if (latestRecording) {
-      this.setState({
-        recordings: [...this.state.recordings, latestRecording]
-      })
-    }
+  private handleStartRecording = () => {
+    const { recordings, maxRecordingTime } = this.state
+    RecordingAudioEngine.Recording.startRecording(maxRecordingTime).then(
+      recording => {
+        this.setState({
+          recordings: [...recordings, recording]
+        })
+      }
+    )
   }
 
   private renderStartStop() {
-    const { startRecording } = RecordingAudioEngine.Recording
     return (
       <div>
-        <button onClick={() => startRecording()}>start recording</button>
-        <button onClick={() => this.handleStopRecording()}>
+        <button onClick={this.handleStartRecording}>start recording</button>
+        <button onClick={RecordingAudioEngine.Recording.stopRecording}>
           stop recording
         </button>
       </div>
@@ -49,9 +51,26 @@ class Example extends React.Component<any, ExampleState> {
     return <ul>{lis}</ul>
   }
 
+  private renderMaxTimeout() {
+    return (
+      <div>
+        Max Recording Length (seconds):
+        <input
+          onChange={e =>
+            this.setState({ maxRecordingTime: parseInt(e.target.value, 10) })
+          }
+          min={1}
+          type="number"
+          value={this.state.maxRecordingTime}
+        />
+      </div>
+    )
+  }
+
   public render() {
     return (
       <div>
+        {this.renderMaxTimeout()}
         {this.renderStartStop()}
         {this.renderRecordings()}
       </div>
