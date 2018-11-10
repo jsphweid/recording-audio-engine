@@ -1,4 +1,5 @@
 import { MAX_RECORDING_SECONDS } from './constants'
+import { makeTimeoutPromise } from './helpers'
 import MonoRecording from './mono-recording'
 import {
   connectRecordingNodes,
@@ -9,12 +10,6 @@ let stopRecordingResolver: () => void
 
 const makePromiseWithExternalHandlers = (): Promise<MonoRecording> => {
   return new Promise(resolve => (stopRecordingResolver = resolve))
-}
-
-const makeTimeoutPromise = (milli: number): Promise<MonoRecording> => {
-  return new Promise(resolve => {
-    setTimeout(resolve, milli)
-  })
 }
 
 export function startRecording(

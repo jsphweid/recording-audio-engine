@@ -1,6 +1,7 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import * as RecordingAudioEngine from '../src'
+import Recording from './recording'
 
 interface ExampleState {
   recordings: RecordingAudioEngine.MonoRecording[]
@@ -40,15 +41,10 @@ class Example extends React.Component<any, ExampleState> {
 
   private renderRecordings() {
     if (!this.state.recordings) return null
-    const lis = this.state.recordings.map((recording, i) => (
-      <li
-        key={i}
-        onClick={() => RecordingAudioEngine.Playing.playRecording(recording)}
-      >
-        Recording {i + 1} made on {`${recording.createDate}`}
-      </li>
+    const recordings = this.state.recordings.map((recording, i) => (
+      <Recording recording={recording} key={`recording${i}`} />
     ))
-    return <ul>{lis}</ul>
+    return <ul>{recordings}</ul>
   }
 
   private renderMaxTimeout() {

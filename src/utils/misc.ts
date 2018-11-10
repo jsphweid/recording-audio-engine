@@ -1,12 +1,13 @@
 import audioContextInstance from '../audio-context'
 
 export function float32ToMonoAudioBuffer(
-  float32Data: Float32Array
+  float32Data: Float32Array,
+  sampleRate: number = audioContextInstance.sampleRate
 ): AudioBuffer {
   const finalBuffer = audioContextInstance.createBuffer(
     1,
     float32Data.length,
-    audioContextInstance.sampleRate
+    sampleRate
   )
 
   finalBuffer.copyToChannel(float32Data, 0, 0)
