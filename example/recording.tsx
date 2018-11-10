@@ -1,3 +1,4 @@
+import FileSaver from 'file-saver'
 import * as React from 'react'
 import * as RecordingAudioEngine from '../src'
 import { timeSince } from './helpers'
@@ -28,6 +29,10 @@ export default class Recording extends React.Component<
     })
   }
 
+  private handleDownloadWav = (): void => {
+    FileSaver.saveAs(this.props.recording.wavBlob)
+  }
+
   public render() {
     const { recording } = this.props
     const { isPlaying } = this.state
@@ -40,6 +45,7 @@ export default class Recording extends React.Component<
         <button onClick={() => recording.stop()} disabled={!isPlaying}>
           Pause
         </button>
+        <button onClick={this.handleDownloadWav}>Download</button>
       </li>
     )
   }
