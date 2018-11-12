@@ -14,6 +14,7 @@ This library does concern itself with managing a complicated state. You can acce
 
 - have an example project that uses the lib for development purposes
 - Support multi-channel everywhere: As this was developed out of projects that make use of the microphone, the MVP was built around mono audio. Some parts are built with multi-channel in mind but the API will assume mono until the whole code base has multi-channel support.
+- simplify tsconfigs by sharing most of the stuff
 
 ### Note about tests
 

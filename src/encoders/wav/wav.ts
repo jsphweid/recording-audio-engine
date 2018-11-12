@@ -1,4 +1,4 @@
-import audioContextInstance from '../audio-context'
+import audioContextInstance from '../../audio-context'
 
 class WavEncoder {
   private sampleRate: number

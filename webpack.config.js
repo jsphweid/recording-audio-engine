@@ -8,6 +8,9 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js', '.jsx']
   },
   entry: './example/index.tsx',
+  node: {
+    fs: 'empty'
+  },
   module: {
     rules: [
       {

@@ -33,6 +33,10 @@ export default class Recording extends React.Component<
     FileSaver.saveAs(this.props.recording.wavBlob)
   }
 
+  private handleDownloadFlac = async (): Promise<void> => {
+    FileSaver.saveAs(await this.props.recording.flacBlob)
+  }
+
   public render() {
     const { recording } = this.props
     const { isPlaying } = this.state
@@ -45,7 +49,8 @@ export default class Recording extends React.Component<
         <button onClick={() => recording.stop()} disabled={!isPlaying}>
           Pause
         </button>
-        <button onClick={this.handleDownloadWav}>Download</button>
+        <button onClick={this.handleDownloadWav}>Download Wav</button>
+        <button onClick={this.handleDownloadFlac}>Download Flac</button>
       </li>
     )
   }

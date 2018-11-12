@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "lib": ["es2018", "dom"],
+    "lib": ["es2018", "dom", "webworker", "scripthost"],
     "types": ["node", "jasmine"],
     "outDir": "dist",
     "sourceMap": true,

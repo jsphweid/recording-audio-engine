@@ -1,4 +1,5 @@
 import AudioContextInstance from './audio-context'
+import { encodeMonoFlac } from './encoders/flac'
 import { encodeMono } from './encoders/wav'
 import { makeTimeoutPromise } from './helpers'
 import { float32ToMonoAudioBuffer } from './utils'
@@ -28,6 +29,10 @@ export default class MonoRecording {
 
   public get wavBlob(): Blob {
     return encodeMono(this.rawData, this.sampleRate)
+  }
+
+  public get flacBlob(): Promise<Blob> {
+    return encodeMonoFlac(this.rawData, this.sampleRate)
   }
 
   public get audioBuffer(): AudioBuffer {
