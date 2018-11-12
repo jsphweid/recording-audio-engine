@@ -4,7 +4,8 @@
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
   "dependencies": {
     "libflacjs": "git+https://github.com/mmig/libflac.js.git",
-    "promise-worker": "^2.0.0"
+    "promise-worker": "^2.0.0",
+    "worker-loader": "^2.0.0"
   },
   "devDependencies": {
     "@types/file-saver": "^2.0.0",

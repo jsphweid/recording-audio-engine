@@ -7,11 +7,14 @@
 // TODO: move this to a different file
 // TODO: is a blob really what we get?
 
-const PromiseWorker = require('promise-worker')
+// const PromiseWorker = require('promise-worker')
+import PromiseWorker from 'promise-worker'
+import Worker from 'worker-loader!./encoder-worker'
 
-import * as workerPath from 'file-loader?name=[name].js!./encoder-worker'
-console.log('workerPath', workerPath)
-const worker = new Worker(workerPath)
+// import * as workerPath from 'file-loader?name=[name].js!./encoder-worker'
+// console.log('workerPath', workerPath)
+const worker = new Worker()
+console.log('worker', worker)
 const promiseWorker = new PromiseWorker(worker)
 console.log('promiseWorker', promiseWorker)
 

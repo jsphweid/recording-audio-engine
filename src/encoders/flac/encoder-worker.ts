@@ -1,5 +1,6 @@
 // importScripts('libflac3-1.3.2.min.js')
 
+const workerContext: Worker = self as any
 const registerPromiseWorker = require('promise-worker/register')
 const Flac = require('../../../node_modules/libflacjs/dist/libflac4-1.3.2.js')
 console.log('Flac', Flac)
@@ -32,14 +33,13 @@ function write_wav(buffer: any) {
   wavLength += buffer.length
 }
 console.log('---------', self)
-registerPromiseWorker((e: any) => {
-  console.log('on message', e)
-  switch (e.data.cmd) {
+registerPromiseWorker((message: any) => {
+  switch (message.cmd) {
     case 'init':
       // using FLAC
 
-      if (!e.data.config) {
-        e.data.config = {
+      if (!message.config) {
+        message.config = {
           bps: bitDepth,
           channels: numberOfChannels,
           samplerate: samplerRate,
@@ -47,22 +47,22 @@ registerPromiseWorker((e: any) => {
         }
       }
 
-      e.data.config.channels = e.data.config.channels
-        ? e.data.config.channels
+      message.config.channels = message.config.channels
+        ? message.config.channels
         : numberOfChannels
-      e.data.config.samplerate = e.data.config.samplerate
-        ? e.data.config.samplerate
+      message.config.samplerate = message.config.samplerate
+        ? message.config.samplerate
         : samplerRate
-      e.data.config.bps = e.data.config.bps ? e.data.config.bps : bitDepth
-      e.data.config.compression = e.data.config.compression
-        ? e.data.config.compression
+      message.config.bps = message.config.bps ? message.config.bps : bitDepth
+      message.config.compression = message.config.compression
+        ? message.config.compression
         : compressionLevel
 
       ////
-      compressionLevel = e.data.config.compression
-      bitDepth = e.data.config.bps
-      samplerRate = e.data.config.samplerate
-      numberOfChannels = e.data.config.channels
+      compressionLevel = message.config.compression
+      bitDepth = message.config.bps
+      samplerRate = message.config.samplerate
+      numberOfChannels = message.config.channels
       ////
 
       if (!Flac.isReady()) {
@@ -77,7 +77,7 @@ registerPromiseWorker((e: any) => {
       break
 
     case 'encode':
-      encodeFlac(e.data.buf)
+      encodeFlac(message.buf)
       break
 
     case 'finish':
@@ -94,20 +94,20 @@ registerPromiseWorker((e: any) => {
 
       clear()
 
-      self.postMessage({ cmd: 'end', buf: data }, '') // added empty string as second arg
+      workerContext.postMessage({ cmd: 'end', buf: data }) // added empty string as second arg
       INIT = false
       break
   }
 })
 
-// self.onmessage = (e: any) => {
+// workerContext.onmessage = (e: any) => {
 //   console.log('on message', e)
-//   switch (e.data.cmd) {
+//   switch (message.cmd) {
 //     case 'init':
 //       // using FLAC
 
-//       if (!e.data.config) {
-//         e.data.config = {
+//       if (!message.config) {
+//         message.config = {
 //           bps: bitDepth,
 //           channels: numberOfChannels,
 //           samplerate: samplerRate,
@@ -115,22 +115,22 @@ registerPromiseWorker((e: any) => {
 //         }
 //       }
 
-//       e.data.config.channels = e.data.config.channels
-//         ? e.data.config.channels
+//       message.config.channels = message.config.channels
+//         ? message.config.channels
 //         : numberOfChannels
-//       e.data.config.samplerate = e.data.config.samplerate
-//         ? e.data.config.samplerate
+//       message.config.samplerate = message.config.samplerate
+//         ? message.config.samplerate
 //         : samplerRate
-//       e.data.config.bps = e.data.config.bps ? e.data.config.bps : bitDepth
-//       e.data.config.compression = e.data.config.compression
-//         ? e.data.config.compression
+//       message.config.bps = message.config.bps ? message.config.bps : bitDepth
+//       message.config.compression = message.config.compression
+//         ? message.config.compression
 //         : compressionLevel
 
 //       ////
-//       compressionLevel = e.data.config.compression
-//       bitDepth = e.data.config.bps
-//       samplerRate = e.data.config.samplerate
-//       numberOfChannels = e.data.config.channels
+//       compressionLevel = message.config.compression
+//       bitDepth = message.config.bps
+//       samplerRate = message.config.samplerate
+//       numberOfChannels = message.config.channels
 //       ////
 
 //       if (!Flac.isReady()) {
@@ -145,7 +145,7 @@ registerPromiseWorker((e: any) => {
 //       break
 
 //     case 'encode':
-//       encodeFlac(e.data.buf)
+//       encodeFlac(message.buf)
 //       break
 
 //     case 'finish':
@@ -162,7 +162,7 @@ registerPromiseWorker((e: any) => {
 
 //       clear()
 
-//       self.postMessage({ cmd: 'end', buf: data }, '') // added empty string as second arg
+//       workerContext.postMessage({ cmd: 'end', buf: data }, '') // added empty string as second arg
 //       INIT = false
 //       break
 //   }
@@ -227,6 +227,7 @@ function doEncodeFlac(audioData: any) {
     index += 4
   }
 
+  console.log('Flac.isReady()', Flac.isReady())
   const flacReturn = Flac.FLAC__stream_encoder_process_interleaved(
     flacEncoder,
     bufferI32,
