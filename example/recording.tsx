@@ -45,7 +45,7 @@ export default class Recording extends React.Component<
         <button onClick={() => recording.stop()} disabled={!isPlaying}>
           Pause
         </button>
-        <button onClick={this.handleDownloadWav}>Download</button>
+        <button onClick={this.handleDownloadWav}>Download Wav</button>
       </li>
     )
   }
