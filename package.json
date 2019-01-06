@@ -1,6 +1,6 @@
 {
   "name": "recording-audio-engine",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
   "dependencies": {},
   "devDependencies": {
@@ -34,7 +34,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "prepublish": "npm run test",
+    "prepublish": "npm run test && npm run build",
     "test": "npm run lint && RUN_ONCE=true karma start",
     "test:dev": "karma start",
     "lint": "tslint -p tsconfig.json",

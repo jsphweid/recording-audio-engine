@@ -15,13 +15,14 @@ const makePromiseWithExternalHandlers = (): Promise<MonoRecording> => {
 export function startRecording(
   maxLengthSeconds = MAX_RECORDING_SECONDS
 ): Promise<MonoRecording> {
-  connectRecordingNodes()
-  return Promise.race([
-    makePromiseWithExternalHandlers(),
-    makeTimeoutPromise(maxLengthSeconds * 1000)
-  ]).then(() => {
-    const audioData = disconnectRecordingNodes()
-    return new MonoRecording(audioData)
+  return connectRecordingNodes().then(() => {
+    return Promise.race([
+      makePromiseWithExternalHandlers(),
+      makeTimeoutPromise(maxLengthSeconds * 1000)
+    ]).then(() => {
+      const audioData = disconnectRecordingNodes()
+      return new MonoRecording(audioData)
+    })
   })
 }
 
