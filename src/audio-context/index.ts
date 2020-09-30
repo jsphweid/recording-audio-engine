@@ -1,3 +1,3 @@
-import audioContextInstance from './instance'
+import audioContextInstance from "./instance";
 
-export default audioContextInstance
+export default audioContextInstance;

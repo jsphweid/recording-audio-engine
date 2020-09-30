@@ -1,29 +1,29 @@
-import audioContextInstance from './audio-context'
-import { BUFFER_SIZE } from './constants'
-import { flattenFloat32Arrays } from './helpers'
+import audioContextInstance from "./audio-context";
+import { BUFFER_SIZE } from "./constants";
+import { flattenFloat32Arrays } from "./helpers";
 
-let source: MediaStreamAudioSourceNode | undefined
-let processor: ScriptProcessorNode | undefined
-let tmpAudioData: Float32Array[] = []
+let source: MediaStreamAudioSourceNode | undefined;
+let processor: ScriptProcessorNode | undefined;
+let tmpAudioData: Float32Array[] = [];
 
 export function connectRecordingNodes(): Promise<void> {
-  tmpAudioData = []
+  tmpAudioData = [];
   return new Promise(resolve => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      source = audioContextInstance.createMediaStreamSource(stream)
-      processor = audioContextInstance.createScriptProcessor(BUFFER_SIZE, 1, 1)
+      source = audioContextInstance.createMediaStreamSource(stream);
+      processor = audioContextInstance.createScriptProcessor(BUFFER_SIZE, 1, 1);
       processor.onaudioprocess = (event: AudioProcessingEvent) => {
-        tmpAudioData.push(event.inputBuffer.getChannelData(0).slice())
-      }
-      source.connect(processor)
-      processor.connect(audioContextInstance.destination)
-      resolve()
-    })
-  })
+        tmpAudioData.push(event.inputBuffer.getChannelData(0).slice());
+      };
+      source.connect(processor);
+      processor.connect(audioContextInstance.destination);
+      resolve();
+    });
+  });
 }
 
 export function disconnectRecordingNodes(): Float32Array {
-  if (source) source.disconnect()
-  if (processor) processor.disconnect()
-  return flattenFloat32Arrays(tmpAudioData)
+  if (source) source.disconnect();
+  if (processor) processor.disconnect();
+  return flattenFloat32Arrays(tmpAudioData);
 }
