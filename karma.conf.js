@@ -1,21 +1,21 @@
 module.exports = config => {
   config.set({
-    frameworks: ['jasmine', 'karma-typescript'],
+    frameworks: ["jasmine", "karma-typescript"],
 
-    files: [{ pattern: 'src/**/*.ts' }],
+    files: [{ pattern: "src/**/*.ts" }],
 
     preprocessors: {
-      'src/**/*.ts': ['karma-typescript']
+      "src/**/*.ts": ["karma-typescript"],
     },
 
-    reporters: ['dots', 'karma-typescript'],
+    reporters: ["dots", "karma-typescript"],
 
     karmaTypescriptConfig: {
-      tsconfig: './tsconfig.json'
+      tsconfig: "./tsconfig.json",
     },
 
-    browsers: ['ChromeHeadless'],
+    browsers: ["ChromeHeadless"],
 
-    singleRun: !!process.env.RUN_ONCE
-  })
-}
+    singleRun: !!process.env.RUN_ONCE,
+  });
+};

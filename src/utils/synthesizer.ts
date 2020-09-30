@@ -1,27 +1,27 @@
-import audioContextInstance from '../audio-context'
-import MonoRecording from '../mono-recording'
+import audioContextInstance from "../audio-context";
+import MonoRecording from "../mono-recording";
 
 export function makeSynthesizedMonoRecording(
-  recordings: MonoRecording[]
+  recordings: MonoRecording[],
 ): MonoRecording {
-  const buffers = recordings.map(({ audioBuffer }) => audioBuffer)
-  let maxChannels = 0
-  let maxDuration = 0
+  const buffers = recordings.map(({ audioBuffer }) => audioBuffer);
+  let maxChannels = 0;
+  let maxDuration = 0;
 
   for (const buffer of buffers) {
     if (buffer.numberOfChannels > maxChannels) {
-      maxChannels = buffer.numberOfChannels
+      maxChannels = buffer.numberOfChannels;
     }
     if (buffer.duration > maxDuration) {
-      maxDuration = buffer.duration
+      maxDuration = buffer.duration;
     }
   }
 
   const outBuffer = audioContextInstance.createBuffer(
     maxChannels,
     audioContextInstance.sampleRate * maxDuration,
-    audioContextInstance.sampleRate
-  )
+    audioContextInstance.sampleRate,
+  );
 
   for (const buffer of buffers) {
     for (
@@ -29,15 +29,15 @@ export function makeSynthesizedMonoRecording(
       srcChannel < buffer.numberOfChannels;
       srcChannel++
     ) {
-      const outt = outBuffer.getChannelData(srcChannel)
-      const inn = buffer.getChannelData(srcChannel)
-      const innLength = inn.length
+      const outt = outBuffer.getChannelData(srcChannel);
+      const inn = buffer.getChannelData(srcChannel);
+      const innLength = inn.length;
       for (let i = 0; i < innLength; i++) {
-        outt[i] += inn[i]
+        outt[i] += inn[i];
       }
-      outBuffer.getChannelData(srcChannel).set(outt, 0)
+      outBuffer.getChannelData(srcChannel).set(outt, 0);
     }
   }
 
-  return new MonoRecording(outBuffer.getChannelData(0))
+  return new MonoRecording(outBuffer.getChannelData(0));
 }

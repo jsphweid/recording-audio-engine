@@ -1,4 +1,4 @@
-import { makeSynthesizedMonoRecording } from './synthesizer'
+import { makeSynthesizedMonoRecording } from "./synthesizer";
 
-export * from './misc'
-export { makeSynthesizedMonoRecording }
+export * from "./misc";
+export { makeSynthesizedMonoRecording };
