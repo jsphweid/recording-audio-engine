@@ -5,6 +5,7 @@ if (typeof window === 'undefined') {
 const win = window as any
 
 if (!win.AudioContext) {
+  console.log('No audio context, likely because test env. Creating one...')
   win.AudioContext = class {
     public sampleRate = 44100
   }

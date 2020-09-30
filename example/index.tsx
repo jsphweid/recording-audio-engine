@@ -21,6 +21,7 @@ class Example extends React.Component<any, ExampleState> {
     const { recordings, maxRecordingTime } = this.state
     RecordingAudioEngine.Recording.startRecording(maxRecordingTime).then(
       recording => {
+        console.log('got recording', recording)
         this.setState({
           recordings: [...recordings, recording]
         })
