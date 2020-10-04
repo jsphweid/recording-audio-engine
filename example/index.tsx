@@ -1,10 +1,10 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as RecordingAudioEngine from "../src";
-import Recording from "./recording";
+// import Recording from "./recording";
 
 interface ExampleState {
-  recordings: RecordingAudioEngine.MonoRecording[];
+  // recordings: RecordingAudioEngine.MonoRecording[];
   maxRecordingTime: number;
   isRecorderReady: boolean;
   isRecording: boolean;
@@ -16,7 +16,7 @@ class Example extends React.Component<any, ExampleState> {
   constructor(props: any) {
     super(props);
     this.state = {
-      recordings: [],
+      // recordings: [],
       maxRecordingTime: 5,
       isRecorderReady: false,
       isRecording: false,
@@ -44,9 +44,11 @@ class Example extends React.Component<any, ExampleState> {
     this.recorder.stop();
     this.setState({ isRecording: false });
     this.recorder.exportWAV(blob => {
-      console.log("callback");
-      RecordingAudioEngine.Recorder.forceDownload(blob, "lol.wav");
+      RecordingAudioEngine.Recorder.forceDownload(blob);
     });
+    // this.recorder.exportWAV().then(blob => {
+    //   RecordingAudioEngine.Recorder.forceDownload(blob, "lol.wav");
+    // });
   };
 
   private renderStartStop = () => (
@@ -66,13 +68,13 @@ class Example extends React.Component<any, ExampleState> {
     </div>
   );
 
-  private renderRecordings() {
-    if (!this.state.recordings) return null;
-    const recordings = this.state.recordings.map((recording, i) => (
-      <Recording recording={recording} key={`recording${i}`} />
-    ));
-    return <ul>{recordings}</ul>;
-  }
+  // private renderRecordings() {
+  //   if (!this.state.recordings) return null;
+  //   const recordings = this.state.recordings.map((recording, i) => (
+  //     <Recording recording={recording} key={`recording${i}`} />
+  //   ));
+  //   return <ul>{recordings}</ul>;
+  // }
 
   private renderMaxTimeout() {
     return (
@@ -95,7 +97,7 @@ class Example extends React.Component<any, ExampleState> {
       <div>
         {this.renderMaxTimeout()}
         {this.renderStartStop()}
-        {this.renderRecordings()}
+        {/* {this.renderRecordings()} */}
       </div>
     );
   }

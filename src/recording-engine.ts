@@ -158,12 +158,15 @@ class Recorder {
     });
   }
 
-  public static forceDownload(blob: Blob, filename: string): void {
+  public static forceDownload(
+    blob: Blob,
+    filename: string = "output.wav",
+  ): void {
     console.log("blob", blob);
     const url = window.URL.createObjectURL(blob);
     const link = window.document.createElement("a");
     link.href = url;
-    link.download = filename || "output.wav";
+    link.download = filename;
     link.click();
     window.URL.revokeObjectURL(url);
     // const click = document.createEvent("Event");
