@@ -1,50 +1,77 @@
-import * as React from 'react'
-import * as ReactDOM from 'react-dom'
-import * as RecordingAudioEngine from '../src'
-import Recording from './recording'
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+import * as RecordingAudioEngine from "../src";
+import Recording from "./recording";
 
 interface ExampleState {
-  recordings: RecordingAudioEngine.MonoRecording[]
-  maxRecordingTime: number
+  recordings: RecordingAudioEngine.MonoRecording[];
+  maxRecordingTime: number;
+  isRecorderReady: boolean;
+  isRecording: boolean;
 }
 
 class Example extends React.Component<any, ExampleState> {
+  public recorder = new RecordingAudioEngine.Recorder();
+
   constructor(props: any) {
-    super(props)
+    super(props);
     this.state = {
       recordings: [],
-      maxRecordingTime: 5
-    }
+      maxRecordingTime: 5,
+      isRecorderReady: false,
+      isRecording: false,
+    };
+    this.recorder
+      .initialize()
+      .then(() => this.setState({ isRecorderReady: true }));
   }
 
   private handleStartRecording = () => {
-    const { recordings, maxRecordingTime } = this.state
-    RecordingAudioEngine.Recording.startRecording(maxRecordingTime).then(
-      recording => {
-        this.setState({
-          recordings: [...recordings, recording]
-        })
-      }
-    )
-  }
+    this.recorder.start();
 
-  private renderStartStop() {
-    return (
-      <div>
-        <button onClick={this.handleStartRecording}>start recording</button>
-        <button onClick={RecordingAudioEngine.Recording.stopRecording}>
-          stop recording
-        </button>
-      </div>
-    )
-  }
+    this.setState({ isRecording: true });
+
+    // RecordingAudioEngine.Recording.startRecording(maxRecordingTime).then(
+    //   recording => {
+    //     this.setState({
+    //       recordings: [...recordings, recording],
+    //     });
+    //   },
+    // );
+  };
+
+  private handleStopRecording = () => {
+    this.recorder.stop();
+    this.setState({ isRecording: false });
+    this.recorder.exportWAV(blob => {
+      console.log("callback");
+      RecordingAudioEngine.Recorder.forceDownload(blob, "lol.wav");
+    });
+  };
+
+  private renderStartStop = () => (
+    <div>
+      <button
+        onClick={this.handleStartRecording}
+        disabled={this.state.isRecording}
+      >
+        start recording
+      </button>
+      <button
+        onClick={this.handleStopRecording}
+        disabled={!this.state.isRecording}
+      >
+        stop recording
+      </button>
+    </div>
+  );
 
   private renderRecordings() {
-    if (!this.state.recordings) return null
+    if (!this.state.recordings) return null;
     const recordings = this.state.recordings.map((recording, i) => (
       <Recording recording={recording} key={`recording${i}`} />
-    ))
-    return <ul>{recordings}</ul>
+    ));
+    return <ul>{recordings}</ul>;
   }
 
   private renderMaxTimeout() {
@@ -60,7 +87,7 @@ class Example extends React.Component<any, ExampleState> {
           value={this.state.maxRecordingTime}
         />
       </div>
-    )
+    );
   }
 
   public render() {
@@ -70,8 +97,8 @@ class Example extends React.Component<any, ExampleState> {
         {this.renderStartStop()}
         {this.renderRecordings()}
       </div>
-    )
+    );
   }
 }
 
-ReactDOM.render(<Example />, document.getElementById('example'))
+ReactDOM.render(<Example />, document.getElementById("example"));

@@ -1,4 +1,3 @@
-import AudioContextInstance from "./audio-context";
 import { encodeMono } from "./encoders/wav";
 import { makeTimeoutPromise } from "./helpers";
 import { float32ToMonoAudioBuffer } from "./utils";
@@ -14,7 +13,7 @@ export default class MonoRecording {
 
   constructor(
     rawData: Float32Array,
-    sampleRate = AudioContextInstance.sampleRate,
+    sampleRate = 44100, // TODO: not right
   ) {
     // some validation that makes sure none of the getters will fail
 

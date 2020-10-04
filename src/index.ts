@@ -1,6 +1,14 @@
-import AudioContextInstance from "./audio-context";
 import MonoRecording from "./mono-recording";
-import * as Recording from "./recording-engine";
+import Recorder from "./recording-engine";
 import * as Utils from "./utils";
 
-export { AudioContextInstance, Utils, MonoRecording, Recording };
+// TODO: import Recorder from "./recording-engine"; wtf?
+export { Utils, MonoRecording, Recorder };
+
+export const RecordingAudioEngine = {
+  Utils,
+  MonoRecording,
+  Recorder,
+};
+
+export default RecordingAudioEngine;
