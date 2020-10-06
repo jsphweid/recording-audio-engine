@@ -2,7 +2,7 @@
 
 // export * from "./misc";
 // export { makeSynthesizedMonoRecording };
-
-export const tempFunc = () => {
-  console.log("damn");
+const someFunc = () => {
+  // lol
 };
+export { someFunc };

@@ -34,7 +34,7 @@ export class InlineWebWorker {
     throw new Error("must has a function agument");
   }
   public postMessage(message: any, transfer?: any[] | undefined): void {
-    console.log("lolwat");
+    // @ts-ignore TODO: fix
     this.worker.postMessage(message, transfer);
   }
   public terminate(): void {

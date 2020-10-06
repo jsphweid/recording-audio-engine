@@ -8,6 +8,7 @@ interface ExampleState {
   maxRecordingTime: number;
   isRecorderReady: boolean;
   isRecording: boolean;
+  simpleRecordings: Blob[];
 }
 
 class Example extends React.Component<any, ExampleState> {
@@ -17,6 +18,7 @@ class Example extends React.Component<any, ExampleState> {
     super(props);
     this.state = {
       // recordings: [],
+      simpleRecordings: [],
       maxRecordingTime: 5,
       isRecorderReady: false,
       isRecording: false,
@@ -43,12 +45,14 @@ class Example extends React.Component<any, ExampleState> {
   private handleStopRecording = () => {
     this.recorder.stop();
     this.setState({ isRecording: false });
-    this.recorder.exportWAV(blob => {
-      RecordingAudioEngine.Recorder.forceDownload(blob);
-    });
-    // this.recorder.exportWAV().then(blob => {
-    //   RecordingAudioEngine.Recorder.forceDownload(blob, "lol.wav");
-    // });
+    this.recorder
+      .exportWAV()
+      .then(blob =>
+        this.setState({
+          simpleRecordings: [...this.state.simpleRecordings, blob],
+        }),
+      )
+      .then(() => this.recorder.clear());
   };
 
   private renderStartStop = () => (
@@ -92,12 +96,26 @@ class Example extends React.Component<any, ExampleState> {
     );
   }
 
+  private renderSimpleRecordings = () => {
+    return this.state.simpleRecordings.length === 0 ? null : (
+      <ul>
+        {this.state.simpleRecordings.map((blob, i) => (
+          <li key={`audio-${i}`}>
+            <audio src={URL.createObjectURL(blob)} controls={true} />
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   public render() {
+    console.log("looking at", this.state.simpleRecordings.length, "recordings");
     return (
       <div>
         {this.renderMaxTimeout()}
         {this.renderStartStop()}
         {/* {this.renderRecordings()} */}
+        {this.renderSimpleRecordings()}
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import audioWorker from "./audio-worker";
+import * as AudioWorker from "./audio-worker";
 
 // const getStream = (): Promise<MediaStream> =>
 //   navigator.mediaDevices.getUserMedia({ audio: true });
@@ -58,11 +58,6 @@ class Recorder {
 
   private recording = false;
 
-  // private callbacks = {
-  //   getBuffer: [],
-  //   exportWAV: [],
-  // };
-
   public async initialize(
     _source?: AudioNode,
     _config: Partial<Config> = {},
@@ -74,7 +69,7 @@ class Recorder {
     });
 
     // TODO: change any
-    console.log("initializing....");
+    console.log("Initializing Audio Engine....");
     const source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
 
@@ -95,29 +90,16 @@ class Recorder {
       for (let channel = 0; channel < this.config.numberOfChannels; channel++) {
         buffer.push(e.inputBuffer.getChannelData(channel));
       }
-      audioWorker.postMessage({
-        command: "record",
-        buffer,
-      });
+      AudioWorker.saveBuffer({ buffer });
     };
 
     source.connect(node);
     node.connect(context.destination); // this should not be necessary
 
-    audioWorker.postMessage({
-      command: "init",
-      config: {
-        sampleRate: context.sampleRate,
-        numberOfChannels: this.config.numberOfChannels, // TODO: need types to share here...
-      },
+    return AudioWorker.initWorker({
+      sampleRate: context.sampleRate,
+      numberOfChannels: this.config.numberOfChannels,
     });
-
-    // audioWorker.onmessage = e => {
-    //   const cb = this.callbacks[e.data.command].pop();
-    //   if (typeof cb === "function") {
-    //     cb(e.data.data);
-    //   }
-    // };
   }
 
   public start() {
@@ -129,34 +111,11 @@ class Recorder {
   }
 
   public clear() {
-    audioWorker.postMessage({ command: "clear" });
+    AudioWorker.clear();
   }
 
-  // public getBuffer(cb) {
-  //   cb = cb || this.config.callback;
-  //   if (!cb) throw new Error("Callback not set");
-
-  //   this.callbacks.getBuffer.push(cb);
-
-  //   this.audioWorker.postMessage({ command: "getBuffer" });
-  // }
-
-  public exportWAV(cb: (blob: Blob) => void) {
-    const mimeType = this.config.mimeType;
-    if (!cb) throw new Error("Callback not set");
-
-    // this.callbacks.exportWAV.push(cb);
-
-    audioWorker.onmessage = e => {
-      console.log("main received message", e);
-      cb(e.data.data);
-    };
-
-    audioWorker.postMessage({
-      command: "exportWAV",
-      type: mimeType,
-    });
-  }
+  public exportWAV = (): Promise<Blob> =>
+    AudioWorker.exportWAV({ mimeType: this.config.mimeType });
 
   public static forceDownload(
     blob: Blob,
@@ -169,9 +128,6 @@ class Recorder {
     link.download = filename;
     link.click();
     window.URL.revokeObjectURL(url);
-    // const click = document.createEvent("Event");
-    // click.initEvent("click", true, true);
-    // link.dispatchEvent(click);
   }
 }
 

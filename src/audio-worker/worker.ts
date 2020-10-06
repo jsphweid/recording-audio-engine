@@ -1,59 +1,66 @@
-import { InlineWebWorker } from "./utils/inline-webworker";
+import { InlineWebWorker } from "../utils/inline-webworker";
 
 // TODO: in the future, can't we just pass down the AudioBuffer?
 type MultiChannelBuffer = Float32Array[];
 
-const AudioWorker = new InlineWebWorker(() => {
+export default new InlineWebWorker(() => {
+  // redo constants here for command names
   let recLength = 0; // TODO: rename
   let recBuffers: MultiChannelBuffer[] = []; // TODO: rename
   let sampleRate: number;
   let numberOfChannels: number;
-
   // TODO: types...
   self.onmessage = (e: any) => {
     console.log("got message!---", e.data.command);
     switch (e.data.command) {
       case "init":
-        init(e.data.config);
+        init(e.data.key, e.data.sampleRate, e.data.numberOfChannels);
         break;
       case "record":
-        record(e.data.buffer);
+        record(e.data.key, e.data.buffer);
         break;
       case "exportWAV":
-        exportWAV(e.data.type);
+        exportWAV(e.data.key, e.data.type);
         break;
       case "getBuffer":
         getBuffer();
         break;
       case "clear":
-        clear();
+        clear(e.data.key);
         break;
     }
   };
 
-  function postMessageToMain(obj: { command: string; data: any }) {
+  function postMessageToMain(obj: {
+    command: string;
+    data?: any;
+    key?: string; // TODO: should not be optional... create better abstraction
+  }) {
     // ignored because I don't want to bother with separate tsconfig files for webworker files
     // @ts-ignore
     self.postMessage(obj);
   }
 
-  function init(config: {
-    sampleRate: number;
-    numberOfChannels: number;
-  }): void {
-    sampleRate = config.sampleRate;
-    numberOfChannels = config.numberOfChannels;
+  function init(
+    key: string,
+    _sampleRate: number,
+    _numberOfChannels: number,
+  ): void {
+    sampleRate = _sampleRate;
+    numberOfChannels = _numberOfChannels;
     initBuffers();
+    postMessageToMain({ command: "init", key });
   }
 
-  function record(inputBuffer: MultiChannelBuffer): void {
+  function record(key: string, inputBuffer: MultiChannelBuffer): void {
     for (let channel = 0; channel < numberOfChannels; channel++) {
       recBuffers[channel].push(inputBuffer[channel]);
     }
     recLength += inputBuffer[0].length;
+    postMessageToMain({ command: "record", key });
   }
 
-  function exportWAV(type: "audio/wav"): void {
+  function exportWAV(key: string, type: "audio/wav"): void {
     const buffers = [];
     for (let channel = 0; channel < numberOfChannels; channel++) {
       buffers.push(mergeBuffers(recBuffers[channel], recLength));
@@ -63,8 +70,7 @@ const AudioWorker = new InlineWebWorker(() => {
     const dataview = encodeWAV(interleaved);
     console.log("interleaved", interleaved, interleaved.length);
     const audioBlob = new Blob([dataview], { type });
-
-    postMessageToMain({ command: "exportWAV", data: audioBlob });
+    postMessageToMain({ command: "exportWAV", data: audioBlob, key });
   }
 
   function getBuffer(): void {
@@ -75,10 +81,11 @@ const AudioWorker = new InlineWebWorker(() => {
     postMessageToMain({ command: "getBuffer", data: buffers });
   }
 
-  function clear(): void {
+  function clear(key: string): void {
     recLength = 0;
     recBuffers = [];
     initBuffers();
+    postMessageToMain({ command: "exportWAV", key });
   }
 
   function initBuffers(): void {
@@ -93,12 +100,7 @@ const AudioWorker = new InlineWebWorker(() => {
   ): Float32Array {
     const result = new Float32Array(recLength);
     let offset = 0;
-    // for (let i = 0; i < recBuffers.length; i++) {
-    //   result.set(recBuffers[i], offset);
-    //   offset += recBuffers[i].length;
-    // }
     for (const recBuffer of recBuffers) {
-      console.log("recBuffer", recBuffer);
       result.set(recBuffer, offset);
       offset += recBuffer.length;
     }
@@ -176,5 +178,3 @@ const AudioWorker = new InlineWebWorker(() => {
     return view;
   }
 });
-
-export default AudioWorker;
