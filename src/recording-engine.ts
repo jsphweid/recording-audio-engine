@@ -1,4 +1,5 @@
 import * as AudioWorker from "./audio-worker";
+import { DEFAULT_BUFFER_SIZE, DEFAULT_NUMBER_OF_CHANNELS } from "./constants";
 
 // const getStream = (): Promise<MediaStream> =>
 //   navigator.mediaDevices.getUserMedia({ audio: true });
@@ -51,12 +52,15 @@ interface Config {
 
 class Recorder {
   private config: Config = {
-    bufferLength: 4096,
-    numberOfChannels: 2,
+    bufferLength: DEFAULT_BUFFER_SIZE,
+    numberOfChannels: DEFAULT_NUMBER_OF_CHANNELS,
     mimeType: "audio/wav",
   };
 
   private recording = false;
+  private context: BaseAudioContext | null = null;
+
+  private tempStartTime = 0;
 
   public async initialize(
     _source?: AudioNode,
@@ -68,24 +72,26 @@ class Recorder {
       }, 1000);
     });
 
-    // TODO: change any
     console.log("Initializing Audio Engine....");
     const source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
 
-    const context = source.context;
+    this.context = source.context;
     const node: ScriptProcessorNode = (
-      context.createScriptProcessor || (context as any).createJavaScriptNode
+      this.context.createScriptProcessor ||
+      (this.context as any).createJavaScriptNode
     ).call(
-      context,
+      this.context,
       this.config.bufferLength,
       this.config.numberOfChannels,
       this.config.numberOfChannels,
     );
 
+    // use transferable objects? https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers, https://developers.google.com/web/updates/2011/12/Transferable-Objects-Lightning-Fast
+
     node.onaudioprocess = e => {
       if (!this.recording) return;
-      console.log("processing", e);
+      // console.log("processing", e);
       const buffer = [];
       for (let channel = 0; channel < this.config.numberOfChannels; channel++) {
         buffer.push(e.inputBuffer.getChannelData(channel));
@@ -94,20 +100,38 @@ class Recorder {
     };
 
     source.connect(node);
-    node.connect(context.destination); // this should not be necessary
+    node.connect(this.context.destination); // this should not be necessary
 
     return AudioWorker.initWorker({
-      sampleRate: context.sampleRate,
+      sampleRate: this.context.sampleRate,
       numberOfChannels: this.config.numberOfChannels,
     });
   }
 
+  private withAudioContext = (): Promise<BaseAudioContext> =>
+    new Promise((resolve, reject) =>
+      this.context
+        ? resolve(this.context)
+        : reject(new Error("You must run `initialize` first...")),
+    );
+
   public start() {
-    this.recording = true;
+    return this.withAudioContext().then(context => {
+      this.tempStartTime = context.currentTime;
+      this.recording = true;
+    });
   }
 
   public stop() {
-    this.recording = false;
+    return this.withAudioContext().then(context => {
+      this.recording = false;
+      const diff = context.currentTime - this.tempStartTime;
+      console.log("recorded for", diff, "seconds");
+      console.log(
+        "this should be exactly this many samples:",
+        diff * context.sampleRate,
+      );
+    });
   }
 
   public clear() {

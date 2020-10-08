@@ -11,7 +11,6 @@ export default new InlineWebWorker(() => {
   let numberOfChannels: number;
   // TODO: types...
   self.onmessage = (e: any) => {
-    console.log("got message!---", e.data.command);
     switch (e.data.command) {
       case "init":
         init(e.data.key, e.data.sampleRate, e.data.numberOfChannels);
@@ -68,7 +67,10 @@ export default new InlineWebWorker(() => {
     const interleaved =
       numberOfChannels === 2 ? interleave(buffers[0], buffers[1]) : buffers[0];
     const dataview = encodeWAV(interleaved);
-    console.log("interleaved", interleaved, interleaved.length);
+    console.log(
+      "exported sample length",
+      interleaved.length / numberOfChannels,
+    );
     const audioBlob = new Blob([dataview], { type });
     postMessageToMain({ command: "exportWAV", data: audioBlob, key });
   }
