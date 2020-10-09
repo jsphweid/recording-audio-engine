@@ -57,10 +57,7 @@ class Recorder {
     mimeType: "audio/wav",
   };
 
-  private recording = false;
-  private context: BaseAudioContext | null = null;
-
-  private tempStartTime = 0;
+  private audioContext: BaseAudioContext | null = null;
 
   public async initialize(
     _source?: AudioNode,
@@ -76,70 +73,76 @@ class Recorder {
     const source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
 
-    this.context = source.context;
+    const audioContext = source.context;
     const node: ScriptProcessorNode = (
-      this.context.createScriptProcessor ||
-      (this.context as any).createJavaScriptNode
+      audioContext.createScriptProcessor ||
+      (audioContext as any).createJavaScriptNode
     ).call(
-      this.context,
+      audioContext,
       this.config.bufferLength,
       this.config.numberOfChannels,
       this.config.numberOfChannels,
     );
 
-    // use transferable objects? https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers, https://developers.google.com/web/updates/2011/12/Transferable-Objects-Lightning-Fast
+    const createTransferableAudioBuffer = (
+      audioBuffer: AudioBuffer,
+    ): Float32Array[] => {
+      // Because you can't transfer an AudioBuffer to a WebWorker
 
-    node.onaudioprocess = e => {
-      if (!this.recording) return;
-      // console.log("processing", e);
+      // use transferable objects? https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers, https://developers.google.com/web/updates/2011/12/Transferable-Objects-Lightning-Fast
       const buffer = [];
       for (let channel = 0; channel < this.config.numberOfChannels; channel++) {
-        buffer.push(e.inputBuffer.getChannelData(channel));
+        buffer.push(audioBuffer.getChannelData(channel));
       }
-      AudioWorker.saveBuffer({ buffer });
+      return buffer;
+    };
+
+    node.onaudioprocess = e => {
+      const audioBuffer = e.inputBuffer;
+      AudioWorker.record({
+        buffer: createTransferableAudioBuffer(audioBuffer),
+        sampleStartTime: audioContext.currentTime - audioBuffer.duration,
+      });
     };
 
     source.connect(node);
-    node.connect(this.context.destination); // this should not be necessary
+    node.connect(audioContext.destination);
 
-    return AudioWorker.initWorker({
-      sampleRate: this.context.sampleRate,
+    this.audioContext = audioContext;
+
+    return AudioWorker.init({
+      sampleRate: audioContext.sampleRate,
       numberOfChannels: this.config.numberOfChannels,
     });
   }
 
   private withAudioContext = (): Promise<BaseAudioContext> =>
     new Promise((resolve, reject) =>
-      this.context
-        ? resolve(this.context)
+      this.audioContext
+        ? resolve(this.audioContext)
         : reject(new Error("You must run `initialize` first...")),
     );
 
   public start() {
     return this.withAudioContext().then(context => {
-      this.tempStartTime = context.currentTime;
-      this.recording = true;
+      return AudioWorker.startRecording({ time: context.currentTime });
     });
   }
 
   public stop() {
     return this.withAudioContext().then(context => {
-      this.recording = false;
-      const diff = context.currentTime - this.tempStartTime;
-      console.log("recorded for", diff, "seconds");
-      console.log(
-        "this should be exactly this many samples:",
-        diff * context.sampleRate,
-      );
+      return AudioWorker.stopRecording({ time: context.currentTime });
     });
   }
 
   public clear() {
-    AudioWorker.clear();
+    AudioWorker.clear({}); // TODO: don't do {}
   }
 
   public exportWAV = (): Promise<Blob> =>
-    AudioWorker.exportWAV({ mimeType: this.config.mimeType });
+    AudioWorker.exportWav({ mimeType: this.config.mimeType }).then(
+      data => data.blob,
+    );
 
   public static forceDownload(
     blob: Blob,

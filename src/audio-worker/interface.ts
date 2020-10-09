@@ -1,89 +1,58 @@
+import * as Types from "./types";
 import audioWorker from "./worker";
-
-// TODO: fix any's
 
 const generatePromiseKey = (command: string) =>
   `${command}_${new Date().getTime()}`;
 
-// these must be the same as the worker file
-const EXPORT_WAV_COMMAND = "exportWAV";
-const SAVE_BUFFER_COMMAND = "record";
-const INIT_COMMAND = "init";
-const CLEAR_COMMAND = "clear";
-
-const callbacks: any = {};
+const callbacks: { [key: string]: (data?: any) => void } = {};
 
 audioWorker.onmessage = e => {
   const key = e.data.key;
-  const cb = callbacks[key];
-  if (key.startsWith(EXPORT_WAV_COMMAND)) {
-    cb(e.data.data);
-  } else {
-    // more cases...
-  }
+  const data = e.data.data;
+  callbacks[key](data);
   delete callbacks[key];
 };
 
-export const initWorker = ({
-  sampleRate,
-  numberOfChannels,
-}: {
-  sampleRate: number;
-  numberOfChannels: number;
-}): Promise<void> => {
-  const key = generatePromiseKey(INIT_COMMAND);
+const interfaceGenerator = <
+  A extends Types.Command.Name,
+  B extends object = {},
+  C extends any = void
+>(
+  command: A,
+) => (obj: B): Promise<C> => {
+  const key = generatePromiseKey(command);
   return new Promise(resolve => {
-    callbacks[key] = () => resolve();
-    audioWorker.postMessage({
-      command: INIT_COMMAND,
-      key,
-      sampleRate,
-      numberOfChannels,
-    });
+    callbacks[key] = (data?: any) => resolve(data);
+    audioWorker.postMessage({ command, key, ...obj });
   });
 };
 
-export const clear = (): Promise<void> => {
-  const key = generatePromiseKey(CLEAR_COMMAND);
-  return new Promise(resolve => {
-    callbacks[key] = () => resolve();
-    audioWorker.postMessage({
-      command: CLEAR_COMMAND,
-      key,
-    });
-  });
-};
+export const init = interfaceGenerator<
+  Types.Literals.INIT,
+  Types.Init.UserInput
+>(Types.Literals.INIT);
 
-export const saveBuffer = ({
-  buffer,
-}: {
-  buffer: Float32Array[];
-}): Promise<void> => {
-  const key = generatePromiseKey(SAVE_BUFFER_COMMAND);
-  return new Promise(resolve => {
-    callbacks[key] = () => resolve();
-    audioWorker.postMessage({
-      command: SAVE_BUFFER_COMMAND,
-      buffer,
-      key,
-    });
-  });
-};
+export const clear = interfaceGenerator<Types.Literals.CLEAR>(
+  Types.Literals.CLEAR,
+);
 
-export const exportWAV = (
-  {
-    mimeType,
-  }: {
-    mimeType: "audio/wav";
-  } = { mimeType: "audio/wav" },
-): Promise<Blob> => {
-  const key = generatePromiseKey(EXPORT_WAV_COMMAND);
-  return new Promise(resolve => {
-    callbacks[key] = (blob: Blob) => resolve(blob);
-    audioWorker.postMessage({
-      command: EXPORT_WAV_COMMAND,
-      type: mimeType,
-      key,
-    });
-  });
-};
+export const record = interfaceGenerator<
+  Types.Literals.RECORD,
+  Types.Record.UserInput
+>(Types.Literals.RECORD);
+
+export const startRecording = interfaceGenerator<
+  Types.Literals.START_RECORDING,
+  Types.StartRecording.UserInput
+>(Types.Literals.START_RECORDING);
+
+export const stopRecording = interfaceGenerator<
+  Types.Literals.STOP_RECORDING,
+  Types.StopRecording.UserInput
+>(Types.Literals.STOP_RECORDING);
+
+export const exportWav = interfaceGenerator<
+  Types.Literals.EXPORT_WAV,
+  Types.ExportWAV.UserInput,
+  Types.ExportWAV.WorkerOutput
+>(Types.Literals.EXPORT_WAV);

@@ -43,10 +43,12 @@ class Example extends React.Component<any, ExampleState> {
   };
 
   private handleStopRecording = () => {
-    this.recorder.stop();
-    this.setState({ isRecording: false });
     this.recorder
-      .exportWAV()
+      .stop()
+      .then(() => {
+        this.setState({ isRecording: false });
+        return this.recorder.exportWAV();
+      })
       .then(blob =>
         this.setState({
           simpleRecordings: [...this.state.simpleRecordings, blob],
@@ -59,13 +61,13 @@ class Example extends React.Component<any, ExampleState> {
     <div>
       <button
         onClick={this.handleStartRecording}
-        disabled={this.state.isRecording}
+        disabled={!this.state.isRecorderReady || this.state.isRecording}
       >
         start recording
       </button>
       <button
         onClick={this.handleStopRecording}
-        disabled={!this.state.isRecording}
+        disabled={!this.state.isRecorderReady || !this.state.isRecording}
       >
         stop recording
       </button>

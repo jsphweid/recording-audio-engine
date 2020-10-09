@@ -1,28 +1,38 @@
+import * as Types from "./types";
+
 import { InlineWebWorker } from "../utils/inline-webworker";
 
-// TODO: in the future, can't we just pass down the AudioBuffer?
-type MultiChannelBuffer = Float32Array[];
-
 export default new InlineWebWorker(() => {
+  interface TimedBuffer {
+    firstSampleStartTime: number;
+    data: Float32Array[];
+  }
   // redo constants here for command names
   let recLength = 0; // TODO: rename
-  let recBuffers: MultiChannelBuffer[] = []; // TODO: rename
   let sampleRate: number;
   let numberOfChannels: number;
+  let isRecording = false;
+  let currentRecordingBuffer: TimedBuffer[] = [];
+  let lastFinishedBuffer: TimedBuffer[] = [];
+  let lastStartTime = -1;
+
   // TODO: types...
-  self.onmessage = (e: any) => {
+  self.onmessage = (e: { data: Types.WorkerInputs }) => {
     switch (e.data.command) {
       case "init":
         init(e.data.key, e.data.sampleRate, e.data.numberOfChannels);
         break;
       case "record":
-        record(e.data.key, e.data.buffer);
+        record(e.data.key, e.data.buffer, e.data.sampleStartTime);
+        break;
+      case "startRecording":
+        startRecording(e.data.key, e.data.time);
+        break;
+      case "stopRecording":
+        stopRecording(e.data.key, e.data.time);
         break;
       case "exportWAV":
-        exportWAV(e.data.key, e.data.type);
-        break;
-      case "getBuffer":
-        getBuffer();
+        exportWAV(e.data.key, e.data.mimeType);
         break;
       case "clear":
         clear(e.data.key);
@@ -51,18 +61,57 @@ export default new InlineWebWorker(() => {
     postMessageToMain({ command: "init", key });
   }
 
-  function record(key: string, inputBuffer: MultiChannelBuffer): void {
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      recBuffers[channel].push(inputBuffer[channel]);
-    }
-    recLength += inputBuffer[0].length;
-    postMessageToMain({ command: "record", key });
+  function startRecording(key: string, time: number) {
+    lastStartTime = time;
+    isRecording = true;
+    postMessageToMain({ command: "startRecording", key });
+  }
+
+  function constrainBuffers(
+    buffers: TimedBuffer[],
+    start: number,
+    end: number,
+  ): TimedBuffer[] {
+    // do shit
+    // const diff = context.currentTime - this.tempStartTime;
+    // console.log("recorded for", diff, "seconds");
+    // console.log(
+    //   "this should be exactly this many samples:",
+    //   diff * context.sampleRate,
+    // );
+    console.log("end - start", `${end} - ${start}`, end - start);
+    console.log("buffers", buffers);
+    return buffers; // OBVIOUSLY FAKE
+  }
+
+  function stopRecording(key: string, time: number) {
+    lastFinishedBuffer = constrainBuffers(
+      currentRecordingBuffer.slice(),
+      lastStartTime,
+      time,
+    );
+    // need last buffer....
+    isRecording = false;
+    postMessageToMain({ command: "stopRecording", key });
+  }
+
+  function transformTimedBufferToTransferable(
+    timedBuffer: TimedBuffer[],
+  ): Types.MultiChannelBuffer[] {
+    // need to decide how much processing to do on stop
+    return timedBuffer.reduce((previous, buffer) => {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        previous[channel].push(buffer.data[channel]);
+      }
+      return previous;
+    }, makeEmptyBuffer());
   }
 
   function exportWAV(key: string, type: "audio/wav"): void {
     const buffers = [];
     for (let channel = 0; channel < numberOfChannels; channel++) {
-      buffers.push(mergeBuffers(recBuffers[channel], recLength));
+      const result = transformTimedBufferToTransferable(lastFinishedBuffer);
+      buffers.push(mergeBuffers(result[channel], recLength));
     }
     const interleaved =
       numberOfChannels === 2 ? interleave(buffers[0], buffers[1]) : buffers[0];
@@ -71,29 +120,50 @@ export default new InlineWebWorker(() => {
       "exported sample length",
       interleaved.length / numberOfChannels,
     );
-    const audioBlob = new Blob([dataview], { type });
-    postMessageToMain({ command: "exportWAV", data: audioBlob, key });
+    const blob = new Blob([dataview], { type });
+    console.log("responding to key", key);
+    postMessageToMain({ command: "exportWAV", data: { blob }, key });
   }
 
-  function getBuffer(): void {
-    const buffers = [];
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      buffers.push(mergeBuffers(recBuffers[channel], recLength));
-    }
-    postMessageToMain({ command: "getBuffer", data: buffers });
+  function resetState(): void {
+    recLength = 0;
+    currentRecordingBuffer = [];
+    initBuffers();
   }
 
   function clear(key: string): void {
-    recLength = 0;
-    recBuffers = [];
-    initBuffers();
+    resetState();
     postMessageToMain({ command: "exportWAV", key });
   }
 
-  function initBuffers(): void {
+  function makeEmptyBuffer(): Types.MultiChannelBuffer[] {
+    const array = [];
     for (let channel = 0; channel < numberOfChannels; channel++) {
-      recBuffers[channel] = [];
+      array[channel] = [];
     }
+    return array;
+  }
+
+  function initBuffers(): void {
+    currentRecordingBuffer = [];
+  }
+
+  function record(
+    key: string,
+    inputBuffer: Types.MultiChannelBuffer,
+    firstSampleStartTime: number,
+  ): void {
+    if (!isRecording) {
+      resetState();
+    }
+
+    const data: Types.MultiChannelBuffer = [];
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      data.push(inputBuffer[channel]);
+    }
+    recLength += inputBuffer[0].length;
+    currentRecordingBuffer.push({ firstSampleStartTime, data });
+    postMessageToMain({ command: "record", key });
   }
 
   function mergeBuffers(
