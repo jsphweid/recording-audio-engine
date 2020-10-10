@@ -37,6 +37,7 @@ export namespace Init {
   export interface UserInput {
     sampleRate: number;
     numberOfChannels: number;
+    bufferLength: number
   }
   export type WorkerInput = WorkerBaseInput<Literals.INIT> & UserInput;
 }
@@ -89,3 +90,8 @@ export type WorkerInputs =
   | Record.WorkerInput;
 
 export type MultiChannelBuffer = Float32Array[];
+
+export interface TimedBuffer {
+  firstSampleStartTime: number;
+  data: Float32Array[];
+}

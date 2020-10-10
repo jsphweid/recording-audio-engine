@@ -111,7 +111,6 @@ class Example extends React.Component<any, ExampleState> {
   };
 
   public render() {
-    console.log("looking at", this.state.simpleRecordings.length, "recordings");
     return (
       <div>
         {this.renderMaxTimeout()}

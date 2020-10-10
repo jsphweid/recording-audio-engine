@@ -63,12 +63,6 @@ class Recorder {
     _source?: AudioNode,
     _config: Partial<Config> = {},
   ): Promise<void> {
-    await new Promise(resolve => {
-      setTimeout(() => {
-        resolve("Promise A win!");
-      }, 1000);
-    });
-
     console.log("Initializing Audio Engine....");
     const source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
@@ -113,6 +107,7 @@ class Recorder {
     return AudioWorker.init({
       sampleRate: audioContext.sampleRate,
       numberOfChannels: this.config.numberOfChannels,
+      bufferLength: this.config.bufferLength
     });
   }
 

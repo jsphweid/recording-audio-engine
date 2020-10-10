@@ -3,24 +3,38 @@ import * as Types from "./types";
 import { InlineWebWorker } from "../utils/inline-webworker";
 
 export default new InlineWebWorker(() => {
-  interface TimedBuffer {
-    firstSampleStartTime: number;
-    data: Float32Array[];
+
+  class Hooks {
+    private hooks: Array<() => any>
+    public constructor() {
+      this.hooks = []
+    }
+    public add = (fn: () => any): void => {
+      this.hooks.push(fn)
+    }
+    public flush = (): void => {
+      this.hooks.slice().reverse().forEach((_, index, object) => {
+        this.hooks.splice(object.length - 1 - index, 1)[0]();
+      });
+    }
   }
+
   // redo constants here for command names
   let recLength = 0; // TODO: rename
   let sampleRate: number;
+  let bufferLength: number
   let numberOfChannels: number;
   let isRecording = false;
-  let currentRecordingBuffer: TimedBuffer[] = [];
-  let lastFinishedBuffer: TimedBuffer[] = [];
+  let currentRecordingBuffer: Types.TimedBuffer[] = [];
+  let lastFinishedBuffer: Types.MultiChannelBuffer[] = [];
   let lastStartTime = -1;
-
+  const postRecordHooks = new Hooks()
+  
   // TODO: types...
   self.onmessage = (e: { data: Types.WorkerInputs }) => {
     switch (e.data.command) {
       case "init":
-        init(e.data.key, e.data.sampleRate, e.data.numberOfChannels);
+        init(e.data.key, e.data.sampleRate, e.data.numberOfChannels, e.data.bufferLength);
         break;
       case "record":
         record(e.data.key, e.data.buffer, e.data.sampleStartTime);
@@ -54,9 +68,11 @@ export default new InlineWebWorker(() => {
     key: string,
     _sampleRate: number,
     _numberOfChannels: number,
+    _bufferLength: number
   ): void {
     sampleRate = _sampleRate;
     numberOfChannels = _numberOfChannels;
+    bufferLength = _bufferLength
     initBuffers();
     postMessageToMain({ command: "init", key });
   }
@@ -68,38 +84,65 @@ export default new InlineWebWorker(() => {
   }
 
   function constrainBuffers(
-    buffers: TimedBuffer[],
-    start: number,
-    end: number,
-  ): TimedBuffer[] {
-    // do shit
-    // const diff = context.currentTime - this.tempStartTime;
-    // console.log("recorded for", diff, "seconds");
-    // console.log(
-    //   "this should be exactly this many samples:",
-    //   diff * context.sampleRate,
-    // );
-    console.log("end - start", `${end} - ${start}`, end - start);
-    console.log("buffers", buffers);
-    return buffers; // OBVIOUSLY FAKE
+    _buffers: Types.TimedBuffer[],
+    desiredStart: number,
+    desiredEnd: number,
+  ): Types.MultiChannelBuffer[] {
+    const buffers = _buffers.slice()
+    const bufferDuration = bufferLength/sampleRate
+    const sampleDuration = 1/sampleRate
+
+    if (buffers.length === 0) {
+      throw new Error("How are there no buffers....")
+    }
+    if (desiredStart < buffers[0].firstSampleStartTime) {
+      throw new Error("Recording start time was too early somehow... not covered in buffers.")
+    }
+    if (desiredEnd > (buffers[buffers.length - 1].firstSampleStartTime + (bufferDuration))) {
+      throw new Error("Recording end time was not covered in buffers...")
+    }
+
+    // remove irrelevant buffers
+    const filteredBuffers = buffers.filter((buffer) => {
+      const bufferStart = buffer.firstSampleStartTime
+      const bufferEnd = bufferStart + bufferDuration - sampleDuration
+      return !(bufferEnd < desiredStart || bufferStart > desiredEnd) 
+    })
+
+    // figure out how many sample to remove
+    const samplesToRemoveFromBeginning = Math.round((desiredStart - filteredBuffers[0].firstSampleStartTime) * sampleRate)
+    const samplesToRemoveFromEnd = Math.round((bufferDuration - (desiredEnd - filteredBuffers[filteredBuffers.length - 1].firstSampleStartTime)) * sampleRate)
+
+    const transformedBuffers = transformTimedBufferToTransferable(filteredBuffers)
+
+    // for each channel, remove the samples
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      transformedBuffers[channel][0] = transformedBuffers[channel][0].slice(samplesToRemoveFromBeginning)
+      const lastChannelIndex = transformedBuffers[channel].length - 1
+      transformedBuffers[channel][lastChannelIndex] = transformedBuffers[channel][lastChannelIndex].slice(0, -samplesToRemoveFromEnd)
+    }
+
+
+
+    return transformedBuffers;
   }
 
   function stopRecording(key: string, time: number) {
-    lastFinishedBuffer = constrainBuffers(
-      currentRecordingBuffer.slice(),
-      lastStartTime,
-      time,
-    );
-    // need last buffer....
-    isRecording = false;
-    postMessageToMain({ command: "stopRecording", key });
+    postRecordHooks.add(() => {
+      lastFinishedBuffer = constrainBuffers(
+        currentRecordingBuffer,
+        lastStartTime,
+        time,
+      );
+      isRecording = false;
+      postMessageToMain({ command: "stopRecording", key });
+    })
   }
 
   function transformTimedBufferToTransferable(
-    timedBuffer: TimedBuffer[],
+    timedBuffers: Types.TimedBuffer[],
   ): Types.MultiChannelBuffer[] {
-    // need to decide how much processing to do on stop
-    return timedBuffer.reduce((previous, buffer) => {
+    return timedBuffers.reduce((previous, buffer) => {
       for (let channel = 0; channel < numberOfChannels; channel++) {
         previous[channel].push(buffer.data[channel]);
       }
@@ -110,18 +153,13 @@ export default new InlineWebWorker(() => {
   function exportWAV(key: string, type: "audio/wav"): void {
     const buffers = [];
     for (let channel = 0; channel < numberOfChannels; channel++) {
-      const result = transformTimedBufferToTransferable(lastFinishedBuffer);
+      const result = lastFinishedBuffer;
       buffers.push(mergeBuffers(result[channel], recLength));
     }
     const interleaved =
       numberOfChannels === 2 ? interleave(buffers[0], buffers[1]) : buffers[0];
     const dataview = encodeWAV(interleaved);
-    console.log(
-      "exported sample length",
-      interleaved.length / numberOfChannels,
-    );
     const blob = new Blob([dataview], { type });
-    console.log("responding to key", key);
     postMessageToMain({ command: "exportWAV", data: { blob }, key });
   }
 
@@ -163,8 +201,10 @@ export default new InlineWebWorker(() => {
     }
     recLength += inputBuffer[0].length;
     currentRecordingBuffer.push({ firstSampleStartTime, data });
+    postRecordHooks.flush()
     postMessageToMain({ command: "record", key });
   }
+  
 
   function mergeBuffers(
     recBuffers: Float32Array[],
