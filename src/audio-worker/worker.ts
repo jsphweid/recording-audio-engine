@@ -43,7 +43,7 @@ export default new InlineWebWorker(() => {
   function postMessageToMain(obj: {
     command: string;
     data?: any;
-    key?: string; // TODO: should not be optional... create better abstraction
+    key: string; // TODO: should not be optional... create better abstraction
   }) {
     // ignored because I don't want to bother with separate tsconfig files for webworker files
     // @ts-ignore
