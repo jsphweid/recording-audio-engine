@@ -37,7 +37,7 @@ export namespace Init {
   export interface UserInput {
     sampleRate: number;
     numberOfChannels: number;
-    bufferLength: number
+    bufferLength: number;
   }
   export type WorkerInput = WorkerBaseInput<Literals.INIT> & UserInput;
 }

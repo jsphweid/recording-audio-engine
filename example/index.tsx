@@ -1,73 +1,64 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import * as RecordingAudioEngine from "../src";
-// import Recording from "./recording";
+import AudioEngine, {
+  PlayableAudioType,
+  ScheduledAudioEventType,
+} from "../src";
+import { DEFAULT_SAMPLE_RATE } from "../src/constants";
+import { createMonoSineWave } from "../src/utils/synth";
 
 interface ExampleState {
-  // recordings: RecordingAudioEngine.MonoRecording[];
   maxRecordingTime: number;
-  isRecorderReady: boolean;
+  isEngineReady: boolean;
   isRecording: boolean;
   simpleRecordings: Blob[];
 }
 
 class Example extends React.Component<any, ExampleState> {
-  public recorder = new RecordingAudioEngine.Recorder();
-
   constructor(props: any) {
     super(props);
     this.state = {
-      // recordings: [],
       simpleRecordings: [],
       maxRecordingTime: 5,
-      isRecorderReady: false,
+      isEngineReady: false,
       isRecording: false,
     };
-    this.recorder
-      .initialize()
-      .then(() => this.setState({ isRecorderReady: true }));
+    AudioEngine.initialize().then(() => this.setState({ isEngineReady: true }));
   }
 
   private handleStartRecording = () => {
-    this.recorder.start();
+    // AudioEngine.schedule([{ record: { timeRange: {} } }]);
 
     this.setState({ isRecording: true });
 
-    // RecordingAudioEngine.Recording.startRecording(maxRecordingTime).then(
-    //   recording => {
-    //     this.setState({
-    //       recordings: [...recordings, recording],
-    //     });
-    //   },
-    // );
+    AudioEngine.startRecording();
   };
 
   private handleStopRecording = () => {
-    this.recorder
-      .stop()
+    AudioEngine.stopRecording()
       .then(() => {
         this.setState({ isRecording: false });
-        return this.recorder.exportWAV();
+        return AudioEngine.exportWAV();
       })
       .then(blob =>
         this.setState({
           simpleRecordings: [...this.state.simpleRecordings, blob],
         }),
       )
-      .then(() => this.recorder.clear());
+      .then(() => AudioEngine.clear());
   };
 
   private renderStartStop = () => (
     <div>
       <button
         onClick={this.handleStartRecording}
-        disabled={!this.state.isRecorderReady || this.state.isRecording}
+        disabled={!this.state.isEngineReady || this.state.isRecording}
       >
         start recording
       </button>
       <button
         onClick={this.handleStopRecording}
-        disabled={!this.state.isRecorderReady || !this.state.isRecording}
+        disabled={!this.state.isEngineReady || !this.state.isRecording}
       >
         stop recording
       </button>
@@ -110,6 +101,30 @@ class Example extends React.Component<any, ExampleState> {
     );
   };
 
+  private renderNewTest = () => {
+    const handleNewTestClick = () => {
+      AudioEngine.schedule([
+        {
+          type: ScheduledAudioEventType.PlayEvent,
+          timeRange: {
+            start: { date: new Date(Date.now() + 500) },
+            end: { offset: 0.7 },
+          },
+          data: {
+            type: PlayableAudioType.Raw,
+            rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, 440, 1),
+            sampleRate: DEFAULT_SAMPLE_RATE,
+          },
+        },
+      ]);
+    };
+    return (
+      <div>
+        <button onClick={handleNewTestClick}>schedule</button>
+      </div>
+    );
+  };
+
   public render() {
     return (
       <div>
@@ -117,6 +132,7 @@ class Example extends React.Component<any, ExampleState> {
         {this.renderStartStop()}
         {/* {this.renderRecordings()} */}
         {this.renderSimpleRecordings()}
+        {this.renderNewTest()}
       </div>
     );
   }

@@ -3,38 +3,45 @@ import * as Types from "./types";
 import { InlineWebWorker } from "../utils/inline-webworker";
 
 export default new InlineWebWorker(() => {
-
   class Hooks {
-    private hooks: Array<() => any>
+    private hooks: Array<() => any>;
     public constructor() {
-      this.hooks = []
+      this.hooks = [];
     }
     public add = (fn: () => any): void => {
-      this.hooks.push(fn)
-    }
+      this.hooks.push(fn);
+    };
     public flush = (): void => {
-      this.hooks.slice().reverse().forEach((_, index, object) => {
-        this.hooks.splice(object.length - 1 - index, 1)[0]();
-      });
-    }
+      this.hooks
+        .slice()
+        .reverse()
+        .forEach((_, index, object) => {
+          this.hooks.splice(object.length - 1 - index, 1)[0]();
+        });
+    };
   }
 
   // redo constants here for command names
   let recLength = 0; // TODO: rename
   let sampleRate: number;
-  let bufferLength: number
+  let bufferLength: number;
   let numberOfChannels: number;
   let isRecording = false;
   let currentRecordingBuffer: Types.TimedBuffer[] = [];
   let lastFinishedBuffer: Types.MultiChannelBuffer[] = [];
   let lastStartTime = -1;
-  const postRecordHooks = new Hooks()
-  
+  const postRecordHooks = new Hooks();
+
   // TODO: types...
   self.onmessage = (e: { data: Types.WorkerInputs }) => {
     switch (e.data.command) {
       case "init":
-        init(e.data.key, e.data.sampleRate, e.data.numberOfChannels, e.data.bufferLength);
+        init(
+          e.data.key,
+          e.data.sampleRate,
+          e.data.numberOfChannels,
+          e.data.bufferLength,
+        );
         break;
       case "record":
         record(e.data.key, e.data.buffer, e.data.sampleStartTime);
@@ -68,11 +75,11 @@ export default new InlineWebWorker(() => {
     key: string,
     _sampleRate: number,
     _numberOfChannels: number,
-    _bufferLength: number
+    _bufferLength: number,
   ): void {
     sampleRate = _sampleRate;
     numberOfChannels = _numberOfChannels;
-    bufferLength = _bufferLength
+    bufferLength = _bufferLength;
     initBuffers();
     postMessageToMain({ command: "init", key });
   }
@@ -88,41 +95,57 @@ export default new InlineWebWorker(() => {
     desiredStart: number,
     desiredEnd: number,
   ): Types.MultiChannelBuffer[] {
-    const buffers = _buffers.slice()
-    const bufferDuration = bufferLength/sampleRate
-    const sampleDuration = 1/sampleRate
+    const buffers = _buffers.slice();
+    const bufferDuration = bufferLength / sampleRate;
+    const sampleDuration = 1 / sampleRate;
 
     if (buffers.length === 0) {
-      throw new Error("How are there no buffers....")
+      throw new Error("How are there no buffers....");
     }
     if (desiredStart < buffers[0].firstSampleStartTime) {
-      throw new Error("Recording start time was too early somehow... not covered in buffers.")
+      throw new Error(
+        "Recording start time was too early somehow... not covered in buffers.",
+      );
     }
-    if (desiredEnd > (buffers[buffers.length - 1].firstSampleStartTime + (bufferDuration))) {
-      throw new Error("Recording end time was not covered in buffers...")
+    if (
+      desiredEnd >
+      buffers[buffers.length - 1].firstSampleStartTime + bufferDuration
+    ) {
+      throw new Error("Recording end time was not covered in buffers...");
     }
 
     // remove irrelevant buffers
-    const filteredBuffers = buffers.filter((buffer) => {
-      const bufferStart = buffer.firstSampleStartTime
-      const bufferEnd = bufferStart + bufferDuration - sampleDuration
-      return !(bufferEnd < desiredStart || bufferStart > desiredEnd) 
-    })
+    const filteredBuffers = buffers.filter(buffer => {
+      const bufferStart = buffer.firstSampleStartTime;
+      const bufferEnd = bufferStart + bufferDuration - sampleDuration;
+      return !(bufferEnd < desiredStart || bufferStart > desiredEnd);
+    });
 
     // figure out how many sample to remove
-    const samplesToRemoveFromBeginning = Math.round((desiredStart - filteredBuffers[0].firstSampleStartTime) * sampleRate)
-    const samplesToRemoveFromEnd = Math.round((bufferDuration - (desiredEnd - filteredBuffers[filteredBuffers.length - 1].firstSampleStartTime)) * sampleRate)
+    const samplesToRemoveFromBeginning = Math.round(
+      (desiredStart - filteredBuffers[0].firstSampleStartTime) * sampleRate,
+    );
+    const samplesToRemoveFromEnd = Math.round(
+      (bufferDuration -
+        (desiredEnd -
+          filteredBuffers[filteredBuffers.length - 1].firstSampleStartTime)) *
+        sampleRate,
+    );
 
-    const transformedBuffers = transformTimedBufferToTransferable(filteredBuffers)
+    const transformedBuffers = transformTimedBufferToTransferable(
+      filteredBuffers,
+    );
 
     // for each channel, remove the samples
     for (let channel = 0; channel < numberOfChannels; channel++) {
-      transformedBuffers[channel][0] = transformedBuffers[channel][0].slice(samplesToRemoveFromBeginning)
-      const lastChannelIndex = transformedBuffers[channel].length - 1
-      transformedBuffers[channel][lastChannelIndex] = transformedBuffers[channel][lastChannelIndex].slice(0, -samplesToRemoveFromEnd)
+      transformedBuffers[channel][0] = transformedBuffers[channel][0].slice(
+        samplesToRemoveFromBeginning,
+      );
+      const lastChannelIndex = transformedBuffers[channel].length - 1;
+      transformedBuffers[channel][lastChannelIndex] = transformedBuffers[
+        channel
+      ][lastChannelIndex].slice(0, -samplesToRemoveFromEnd);
     }
-
-
 
     return transformedBuffers;
   }
@@ -136,7 +159,7 @@ export default new InlineWebWorker(() => {
       );
       isRecording = false;
       postMessageToMain({ command: "stopRecording", key });
-    })
+    });
   }
 
   function transformTimedBufferToTransferable(
@@ -201,10 +224,9 @@ export default new InlineWebWorker(() => {
     }
     recLength += inputBuffer[0].length;
     currentRecordingBuffer.push({ firstSampleStartTime, data });
-    postRecordHooks.flush()
+    postRecordHooks.flush();
     postMessageToMain({ command: "record", key });
   }
-  
 
   function mergeBuffers(
     recBuffers: Float32Array[],

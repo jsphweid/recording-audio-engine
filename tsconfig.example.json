@@ -6,6 +6,10 @@
     "sourceMap": true,
     "moduleResolution": "node",
     "strict": true,
+    "baseUrl": "src",
+    "paths": {
+      "~/*": ["./src*"],
+    },
     "noUnusedParameters": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

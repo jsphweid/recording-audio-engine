@@ -1,8 +1,14 @@
 import * as AudioWorker from "./audio-worker";
 import { DEFAULT_BUFFER_SIZE, DEFAULT_NUMBER_OF_CHANNELS } from "./constants";
+import { PlayableAudio } from "./playable-audio";
+import { ScheduledAudioEvent } from "./scheduled-audio-event";
+import { Time } from "./time";
 
-// const getStream = (): Promise<MediaStream> =>
-//   navigator.mediaDevices.getUserMedia({ audio: true });
+const getAudioContext = (): AudioContext => {
+  const win: any = window;
+  win.AudioContext = win.AudioContext || win.webkitAudioContext;
+  return new win.AudioContext();
+};
 
 const getStreamAndAudioContext = (): Promise<{
   stream: MediaStream;
@@ -16,9 +22,7 @@ const getStreamAndAudioContext = (): Promise<{
     navigator.getUserMedia(
       { audio: true },
       stream => {
-        const win: any = window;
-        win.AudioContext = win.AudioContext || win.webkitAudioContext;
-        const audioContext: AudioContext = new win.AudioContext();
+        const audioContext = getAudioContext();
         resolve({ stream, audioContext });
       },
       reject,
@@ -31,38 +35,40 @@ const getDefaultSource = (): Promise<MediaStreamAudioSourceNode> =>
     audioContext.createMediaStreamSource(stream),
   );
 
-// TODO: make constants from events
-
 interface Config {
   bufferLength: 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384;
   numberOfChannels: 1 | 2;
-  mimeType: "audio/wav"; // in the future, more types can be supported...
+  mimeType: "audio/wav";
 }
 
-// const WorkerToMainCommands = {
-//   getBuffer: () => null,
-//   exportWAV: () => null,
-// };
-
-// type MainToWorkerCommands = "init"; // more
-
-// type AllCommandNames =
-//   | MainToWorkerCommands
-//   | (keyof typeof WorkerToMainCommands);
-
-class Recorder {
+class AudioEngine {
   private config: Config = {
     bufferLength: DEFAULT_BUFFER_SIZE,
     numberOfChannels: DEFAULT_NUMBER_OF_CHANNELS,
     mimeType: "audio/wav",
   };
 
+  private isInitialized = false;
   private audioContext: BaseAudioContext | null = null;
+  private microphoneStream: MediaStream | null = null;
 
-  public async initialize(
+  private withInitialization = async (
+    audioContext?: AudioContext | BaseAudioContext,
+    primeMicrophone?: boolean,
+  ) => {
+    if (primeMicrophone) {
+      const { stream, audioContext } = await getStreamAndAudioContext();
+      this.microphoneStream = stream;
+      this.audioContext = audioContext;
+    } else {
+      this.audioContext = audioContext || getAudioContext();
+    }
+  };
+
+  public initialize = async (
     _source?: AudioNode,
     _config: Partial<Config> = {},
-  ): Promise<void> {
+  ): Promise<void> => {
     console.log("Initializing Audio Engine....");
     const source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
@@ -107,9 +113,9 @@ class Recorder {
     return AudioWorker.init({
       sampleRate: audioContext.sampleRate,
       numberOfChannels: this.config.numberOfChannels,
-      bufferLength: this.config.bufferLength
+      bufferLength: this.config.bufferLength,
     });
-  }
+  };
 
   private withAudioContext = (): Promise<BaseAudioContext> =>
     new Promise((resolve, reject) =>
@@ -118,26 +124,100 @@ class Recorder {
         : reject(new Error("You must run `initialize` first...")),
     );
 
-  public start() {
+  public startRecording = () => {
     return this.withAudioContext().then(context => {
       return AudioWorker.startRecording({ time: context.currentTime });
     });
-  }
+  };
 
-  public stop() {
+  public stopRecording = () => {
     return this.withAudioContext().then(context => {
       return AudioWorker.stopRecording({ time: context.currentTime });
     });
-  }
+  };
 
-  public clear() {
+  public clear = () => {
     AudioWorker.clear({}); // TODO: don't do {}
-  }
+  };
 
   public exportWAV = (): Promise<Blob> =>
     AudioWorker.exportWav({ mimeType: this.config.mimeType }).then(
       data => data.blob,
     );
+
+  public getRelativeTime = (
+    context: AudioContext | BaseAudioContext,
+    time: Time.AllTypes,
+    relativeTimeFnCalled: number,
+  ): number =>
+    // TODO: could be smoother if we had logged when the audio context time started
+    Time.when(time, {
+      secondsOffset: seconds => seconds + relativeTimeFnCalled,
+      atDate: date => {
+        const contextStartDate = new Date(
+          Date.now() - context.currentTime * 1000,
+        );
+
+        if (date < contextStartDate) {
+          throw new Error(
+            "Desired start time was before AudioContext initialized!",
+          );
+        } else if (date < new Date()) {
+          throw new Error(
+            "Desired start time was before now. This isn't currently supported.",
+          );
+        }
+
+        return (date.getTime() - contextStartDate.getTime()) / 1000;
+      },
+    });
+
+  public schedule = (scheduledEvents: ScheduledAudioEvent.Event[]) =>
+    this.withAudioContext().then(context => {
+      const { currentTime } = context;
+
+      scheduledEvents.forEach(_ => {
+        // TODO: make sure no events overlap with each other -- and existing...
+      });
+
+      scheduledEvents.forEach(event => {
+        ScheduledAudioEvent.when(event, {
+          record: () => {
+            // TODO: handle...
+          },
+          play: playEvent => {
+            const source = context.createBufferSource();
+            source.buffer = PlayableAudio.conformToAudioBuffer(
+              playEvent.data,
+              context,
+            );
+            source.connect(context.destination);
+
+            const startTime = this.getRelativeTime(
+              context,
+              playEvent.timeRange.start,
+              currentTime,
+            );
+
+            const endTime = playEvent.timeRange.end
+              ? this.getRelativeTime(
+                  context,
+                  playEvent.timeRange.end,
+                  currentTime,
+                )
+              : undefined;
+
+            const duration = endTime ? endTime - startTime : undefined;
+
+            // In the future, we could have an option here
+            // to offset the buffer if it's behind the timing
+            const bufferOffset = 0;
+
+            source.start(startTime, bufferOffset, duration);
+          },
+        });
+      });
+    });
 
   public static forceDownload(
     blob: Blob,
@@ -153,4 +233,4 @@ class Recorder {
   }
 }
 
-export default Recorder;
+export default new AudioEngine();

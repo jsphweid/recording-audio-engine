@@ -1,12 +1,9 @@
-import Recorder from "./recording-engine";
-import * as Utils from "./utils";
+import AudioEngine from "./audio-engine";
 
-// TODO: import Recorder from "./recording-engine"; wtf?
-export { Utils, Recorder };
+import { ScheduledAudioEvent } from "./scheduled-audio-event";
+export const ScheduledAudioEventType = ScheduledAudioEvent.Type;
 
-export const RecordingAudioEngine = {
-  Utils,
-  Recorder,
-};
+import { PlayableAudio } from "./playable-audio";
+export const PlayableAudioType = PlayableAudio.Type;
 
-export default RecordingAudioEngine;
+export default AudioEngine;

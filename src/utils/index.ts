@@ -1,8 +1,3 @@
-// import { makeSynthesizedMonoRecording } from "./synthesizer";
+import { createMonoSineWave } from "./synth";
 
-// export * from "./misc";
-// export { makeSynthesizedMonoRecording };
-const someFunc = () => {
-  // lol
-};
-export { someFunc };
+export { createMonoSineWave };
