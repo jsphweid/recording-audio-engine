@@ -31,7 +31,6 @@
   "scripts": {
     "build": "rm -rf dist && tsc",
     "prepublish": "npm run test && npm run build",
-    "test": "npm run lint && RUN_ONCE=true karma start",
     "test:dev": "karma start",
     "lint": "tslint -p tsconfig.json",
     "example": "webpack-dev-server"
