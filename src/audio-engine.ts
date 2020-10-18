@@ -48,22 +48,7 @@ class AudioEngine {
     mimeType: "audio/wav",
   };
 
-  private isInitialized = false;
   private audioContext: BaseAudioContext | null = null;
-  private microphoneStream: MediaStream | null = null;
-
-  private withInitialization = async (
-    audioContext?: AudioContext | BaseAudioContext,
-    primeMicrophone?: boolean,
-  ) => {
-    if (primeMicrophone) {
-      const { stream, audioContext } = await getStreamAndAudioContext();
-      this.microphoneStream = stream;
-      this.audioContext = audioContext;
-    } else {
-      this.audioContext = audioContext || getAudioContext();
-    }
-  };
 
   public initialize = async (
     _source?: AudioNode,

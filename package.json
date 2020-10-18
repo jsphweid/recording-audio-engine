@@ -1,17 +1,15 @@
 {
-  "name": "recording-audio-engine",
-  "version": "0.0.4",
+  "name": "audio-engine",
+  "version": "1.0.0",
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
   "dependencies": {},
   "devDependencies": {
-    "@types/file-saver": "^2.0.0",
     "@types/jasmine": "^2.8.9",
     "@types/node": "^10.12.2",
     "@types/react": "^16.4.18",
     "@types/react-dom": "^16.0.9",
     "awesome-typescript-loader": "^5.2.1",
     "clean-webpack-plugin": "^0.1.19",
-    "file-saver": "^2.0.0-rc.4",
     "html-webpack-plugin": "^3.2.0",
     "http-server": "^0.12.3",
     "jasmine": "^3.3.0",
@@ -26,8 +24,6 @@
     "tslint": "^5.11.0",
     "tslint-config-prettier": "^1.15.0",
     "typescript": "^4.0.3",
-    "web-audio-api": "^0.2.2",
-    "web-audio-mock-api": "^1.0.0",
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12",
     "webpack-dev-server": "^3.11.0"
@@ -54,7 +50,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bugs": {
-    "url": "https://github.com/jsphweid/recording-audio-engine/issues"
+    "url": "https://github.com/jsphweid/audio-engine/issues"
   },
-  "homepage": "https://github.com/jsphweid/recording-audio-engine#readme"
+  "homepage": "https://github.com/jsphweid/audio-engine#readme"
 }
