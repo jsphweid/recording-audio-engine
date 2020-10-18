@@ -172,6 +172,17 @@ class AudioEngine {
       },
     });
 
+  public playImmediately = (playableAudio: PlayableAudio.AllTypes) =>
+    this.schedule([
+      {
+        type: ScheduledAudioEvent.Type.PlayEvent,
+        timeRange: {
+          start: { offset: 0 },
+        },
+        data: playableAudio,
+      },
+    ]);
+
   public schedule = (scheduledEvents: ScheduledAudioEvent.Event[]) =>
     this.withAudioContext().then(context => {
       const { currentTime } = context;

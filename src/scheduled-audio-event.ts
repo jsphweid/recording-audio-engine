@@ -15,24 +15,25 @@ export namespace ScheduledAudioEvent {
     type: A;
   }
 
-  export interface PlayEvent
+  export interface ScheduledPlayEvent
     extends Contract<Type.PlayEvent, Time.RangeWithOptionalEnd> {
     data: PlayableAudio.AllTypes;
   }
 
-  export interface RecordEvent extends Contract<Type.RecordEvent, Time.Range> {}
+  export interface ScheduledRecordEvent
+    extends Contract<Type.RecordEvent, Time.Range> {}
 
-  export type Event = RecordEvent | PlayEvent;
+  export type Event = ScheduledRecordEvent | ScheduledPlayEvent;
 
-  export const isRecord = (event: Event): event is RecordEvent =>
+  export const isRecord = (event: Event): event is ScheduledRecordEvent =>
     event.type === Type.RecordEvent;
 
-  export const isPlay = (event: Event): event is PlayEvent =>
+  export const isPlay = (event: Event): event is ScheduledPlayEvent =>
     event.type === Type.PlayEvent;
 
   export interface When {
-    record: (recordEvent: RecordEvent) => void;
-    play: (playEvent: PlayEvent) => void;
+    record: (recordEvent: ScheduledRecordEvent) => void;
+    play: (playEvent: ScheduledPlayEvent) => void;
   }
 
   export const when = (event: Event, { record, play }: When): void => {

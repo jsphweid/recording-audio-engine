@@ -101,26 +101,53 @@ class Example extends React.Component<any, ExampleState> {
     );
   };
 
-  private renderNewTest = () => {
-    const handleNewTestClick = () => {
-      AudioEngine.schedule([
-        {
-          type: ScheduledAudioEventType.PlayEvent,
-          timeRange: {
-            start: { date: new Date(Date.now() + 500) },
-            end: { offset: 0.7 },
-          },
-          data: {
+  private renderPlayImmediatelyTest = () => (
+    <div>
+      <button
+        onClick={() => {
+          AudioEngine.playImmediately({
             type: PlayableAudioType.Raw,
-            rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, 440, 1),
+            rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, 1000, 1),
             sampleRate: DEFAULT_SAMPLE_RATE,
-          },
-        },
-      ]);
-    };
+          });
+        }}
+      >
+        test play immediately
+      </button>
+    </div>
+  );
+
+  private renderScheduleTest = () => {
+    const makePlayEvent = (
+      startOffset: number,
+      endOffset: number,
+      freq: number,
+    ) => ({
+      type: ScheduledAudioEventType.PlayEvent,
+      timeRange: {
+        start: { date: new Date(Date.now() + startOffset * 1000) },
+        end: { offset: endOffset },
+      },
+      data: {
+        type: PlayableAudioType.Raw,
+        rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, freq, 1),
+        sampleRate: DEFAULT_SAMPLE_RATE,
+      },
+    });
+
     return (
       <div>
-        <button onClick={handleNewTestClick}>schedule</button>
+        <button
+          onClick={() => {
+            AudioEngine.schedule(
+              [200, 249, 329, 380, 500, 623, 1094, 1423].map((freq, i) =>
+                makePlayEvent(i / 10 + 0.3, i / 10 + 0.5, freq),
+              ),
+            );
+          }}
+        >
+          test schedule play
+        </button>
       </div>
     );
   };
@@ -132,7 +159,8 @@ class Example extends React.Component<any, ExampleState> {
         {this.renderStartStop()}
         {/* {this.renderRecordings()} */}
         {this.renderSimpleRecordings()}
-        {this.renderNewTest()}
+        {this.renderScheduleTest()}
+        {this.renderPlayImmediatelyTest()}
       </div>
     );
   }
