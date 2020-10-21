@@ -34,17 +34,18 @@ class Example extends React.Component<any, ExampleState> {
     AudioEngine.startRecording();
   };
 
+  private appendRecordings = (blobs: Blob[]) =>
+    this.setState({
+      simpleRecordings: [...this.state.simpleRecordings, ...blobs],
+    });
+
   private handleStopRecording = () => {
     AudioEngine.stopRecording()
       .then(() => {
         this.setState({ isRecording: false });
-        return AudioEngine.exportWAV();
+        return AudioEngine.exportLastAsWavBlob();
       })
-      .then(blob =>
-        this.setState({
-          simpleRecordings: [...this.state.simpleRecordings, blob],
-        }),
-      )
+      .then(blob => this.appendRecordings([blob]))
       .then(() => AudioEngine.clear());
   };
 
@@ -101,7 +102,9 @@ class Example extends React.Component<any, ExampleState> {
             type: PlayableAudioType.Raw,
             rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, 1000, 1),
             sampleRate: DEFAULT_SAMPLE_RATE,
-          });
+          }).then(result =>
+            console.log("play immediately test completed", result),
+          );
         }}
       >
         test play immediately
@@ -135,7 +138,7 @@ class Example extends React.Component<any, ExampleState> {
               [200, 249, 329, 380, 500, 623, 1094, 1423].map((freq, i) =>
                 makePlayEvent(i / 10 + 0.3, i / 10 + 0.5, freq),
               ),
-            );
+            ).then(results => console.log("schedule play completed", results));
           }}
         >
           test schedule play
@@ -143,6 +146,29 @@ class Example extends React.Component<any, ExampleState> {
       </div>
     );
   };
+
+  private renderTestScheduledRecords = () => (
+    <div>
+      <button
+        onClick={() => {
+          AudioEngine.schedule([
+            {
+              type: ScheduledAudioEventType.RecordEvent,
+              timeRange: { start: { offset: 0.2 }, end: { offset: 0.7 } },
+            },
+            {
+              type: ScheduledAudioEventType.RecordEvent,
+              timeRange: { start: { offset: 1 }, end: { offset: 1.2 } },
+            },
+          ]).then(results =>
+            this.appendRecordings((results as any[]).filter(r => r !== null)),
+          );
+        }}
+      >
+        test scheduled records
+      </button>
+    </div>
+  );
 
   public render() {
     return (
@@ -152,6 +178,7 @@ class Example extends React.Component<any, ExampleState> {
         {this.renderSimpleRecordings()}
         {this.renderScheduleTest()}
         {this.renderPlayImmediatelyTest()}
+        {this.renderTestScheduledRecords()}
       </div>
     );
   }

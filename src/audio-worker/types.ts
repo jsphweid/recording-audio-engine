@@ -48,24 +48,18 @@ export namespace Clear {
 }
 
 export namespace StartRecording {
-  export interface UserInput {
-    time: number;
-  }
-  export type WorkerInput = WorkerBaseInput<Literals.START_RECORDING> &
-    UserInput;
+  export type WorkerInput = WorkerBaseInput<Literals.START_RECORDING>;
 }
 
 export namespace StopRecording {
-  export interface UserInput {
-    time: number;
-  }
-  export type WorkerInput = WorkerBaseInput<Literals.STOP_RECORDING> &
-    UserInput;
+  export type WorkerInput = WorkerBaseInput<Literals.STOP_RECORDING>;
 }
 
 export namespace ExportWAV {
   export interface UserInput {
     mimeType: "audio/wav";
+    start: number;
+    end: number;
   }
   export type WorkerInput = WorkerBaseInput<Literals.EXPORT_WAV> & UserInput;
   export interface WorkerOutput {

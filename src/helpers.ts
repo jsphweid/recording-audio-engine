@@ -1,5 +1,5 @@
-export function makeTimeoutPromise(milli: number): Promise<any> {
+export function makeTimeoutPromise(seconds: number): Promise<any> {
   return new Promise(resolve => {
-    setTimeout(resolve, milli);
+    setTimeout(resolve, seconds * 1000);
   });
 }

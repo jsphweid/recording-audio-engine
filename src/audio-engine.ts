@@ -1,5 +1,6 @@
 import * as AudioWorker from "./audio-worker";
 import { DEFAULT_BUFFER_SIZE, DEFAULT_NUMBER_OF_CHANNELS } from "./constants";
+import { makeTimeoutPromise } from "./helpers";
 import { PlayableAudio } from "./playable-audio";
 import { ScheduledAudioEvent } from "./scheduled-audio-event";
 import { Time } from "./time";
@@ -51,11 +52,13 @@ class AudioEngine {
   private source: AudioNode | null = null;
   private audioContext: BaseAudioContext | null = null;
 
+  private lastStart: number | null = null;
+  private lastEnd: number | null = null;
+
   public primeRecorder = async (
     _source?: AudioNode,
     _config: Partial<Config> = {},
   ): Promise<void> => {
-    console.log("Initializing Audio Engine....");
     this.source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
 
@@ -117,23 +120,31 @@ class AudioEngine {
     this.source ? Promise.resolve() : this.primeRecorder();
 
   public startRecording = () =>
-    this.withAudioContext({ requireRecorder: true }).then(context =>
-      AudioWorker.startRecording({ time: context.currentTime }),
-    );
+    this.withAudioContext({ requireRecorder: true }).then(context => {
+      this.lastStart = context.currentTime;
+      return AudioWorker.startRecording({});
+    });
 
   public stopRecording = () =>
-    this.withAudioContext().then(context =>
-      AudioWorker.stopRecording({ time: context.currentTime }),
-    );
+    this.withAudioContext().then(context => {
+      this.lastEnd = context.currentTime;
+      return AudioWorker.stopRecording({});
+    });
 
   public clear = () => {
     AudioWorker.clear({}); // TODO: don't do {}
   };
 
-  public exportWAV = (): Promise<Blob> =>
-    AudioWorker.exportWav({ mimeType: this.config.mimeType }).then(
-      data => data.blob,
-    );
+  public exportLastAsWavBlob = (): Promise<Blob> => {
+    if (!this.lastStart || !this.lastEnd) {
+      throw new Error("Need to record something before trying to export...");
+    }
+    return AudioWorker.exportWav({
+      mimeType: this.config.mimeType,
+      start: this.lastStart,
+      end: this.lastEnd,
+    }).then(data => data.blob);
+  };
 
   public getRelativeTime = (
     context: AudioContext | BaseAudioContext,
@@ -171,13 +182,18 @@ class AudioEngine {
         },
         data: playableAudio,
       },
-    ]);
+    ]).then(results => results[0]);
 
-  public schedule = (scheduledEvents: ScheduledAudioEvent.Event[]) =>
-    this.withAudioContext({
-      requireRecorder: scheduledEvents.some(
-        event => event.type === ScheduledAudioEvent.Type.RecordEvent,
-      ),
+  // TODO: fix any
+  public schedule = (
+    scheduledEvents: ScheduledAudioEvent.Event[],
+  ): Promise<Array<Blob | null>> => {
+    const allRecordingEvents = scheduledEvents.filter(
+      ScheduledAudioEvent.isRecord,
+    );
+    const containsAtLeastOnRecordEvent = allRecordingEvents.length > 0;
+    return this.withAudioContext({
+      requireRecorder: containsAtLeastOnRecordEvent,
     }).then(context => {
       const { currentTime } = context;
 
@@ -185,10 +201,52 @@ class AudioEngine {
         // TODO: make sure no events overlap with each other -- and existing...
       });
 
+      const promises: Array<Promise<Blob | null>> = [];
+
+      let recordingChunkPromise: Promise<void> | null = null;
+
+      if (containsAtLeastOnRecordEvent) {
+        const firstStart = Math.min(
+          ...allRecordingEvents.map(event =>
+            this.getRelativeTime(context, event.timeRange.start, currentTime),
+          ),
+        );
+        const lastEnd = Math.max(
+          ...allRecordingEvents.map(event =>
+            this.getRelativeTime(context, event.timeRange.end, currentTime),
+          ),
+        );
+
+        const startOffset = firstStart - currentTime - 0.1;
+
+        recordingChunkPromise = makeTimeoutPromise(startOffset)
+          .then(() => this.startRecording())
+          .then(() => makeTimeoutPromise(lastEnd - currentTime))
+          .then(() => this.stopRecording());
+      }
+
       scheduledEvents.forEach(event => {
         ScheduledAudioEvent.when(event, {
-          record: () => {
-            // TODO: handle...
+          record: recordEvent => {
+            // if we get here, this definitely is a promise...
+            recordingChunkPromise = recordingChunkPromise as Promise<void>;
+
+            const promise = recordingChunkPromise.then(() =>
+              AudioWorker.exportWav({
+                mimeType: this.config.mimeType,
+                start: this.getRelativeTime(
+                  context,
+                  recordEvent.timeRange.start,
+                  currentTime,
+                ),
+                end: this.getRelativeTime(
+                  context,
+                  recordEvent.timeRange.end,
+                  currentTime,
+                ),
+              }).then(data => data.blob),
+            );
+            promises.push(promise);
           },
           play: playEvent => {
             const source = context.createBufferSource();
@@ -210,19 +268,24 @@ class AudioEngine {
                   playEvent.timeRange.end,
                   currentTime,
                 )
-              : undefined;
+              : startTime + source.buffer.length / source.buffer.sampleRate;
 
-            const duration = endTime ? endTime - startTime : undefined;
+            const duration = endTime - startTime;
 
             // In the future, we could have an option here
             // to offset the buffer if it's behind the timing
             const bufferOffset = 0;
 
             source.start(startTime, bufferOffset, duration);
+            promises.push(
+              makeTimeoutPromise(endTime - currentTime).then(() => null),
+            );
           },
         });
       });
+      return Promise.all(promises);
     });
+  };
 }
 
 export default new AudioEngine();

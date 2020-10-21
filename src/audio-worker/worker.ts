@@ -22,14 +22,12 @@ export default new InlineWebWorker(() => {
   }
 
   // redo constants here for command names
-  let recLength = 0; // TODO: rename
   let sampleRate: number;
   let bufferLength: number;
   let numberOfChannels: number;
-  let isRecording = false;
+  let isSavingBuffers = false;
   let currentRecordingBuffer: Types.TimedBuffer[] = [];
-  let lastFinishedBuffer: Types.MultiChannelBuffer[] = [];
-  let lastStartTime = -1;
+  const lastFinishedBuffer: Types.MultiChannelBuffer[] = [];
   const postRecordHooks = new Hooks();
 
   // TODO: types...
@@ -47,13 +45,13 @@ export default new InlineWebWorker(() => {
         record(e.data.key, e.data.buffer, e.data.sampleStartTime);
         break;
       case "startRecording":
-        startRecording(e.data.key, e.data.time);
+        startRecording(e.data.key);
         break;
       case "stopRecording":
-        stopRecording(e.data.key, e.data.time);
+        stopRecording(e.data.key);
         break;
       case "exportWAV":
-        exportWAV(e.data.key, e.data.mimeType);
+        exportWAV(e.data.key, e.data.mimeType, e.data.start, e.data.end);
         break;
       case "clear":
         clear(e.data.key);
@@ -84,9 +82,8 @@ export default new InlineWebWorker(() => {
     postMessageToMain({ command: "init", key });
   }
 
-  function startRecording(key: string, time: number) {
-    lastStartTime = time;
-    isRecording = true;
+  function startRecording(key: string) {
+    isSavingBuffers = true;
     postMessageToMain({ command: "startRecording", key });
   }
 
@@ -150,14 +147,9 @@ export default new InlineWebWorker(() => {
     return transformedBuffers;
   }
 
-  function stopRecording(key: string, time: number) {
+  function stopRecording(key: string) {
     postRecordHooks.add(() => {
-      lastFinishedBuffer = constrainBuffers(
-        currentRecordingBuffer,
-        lastStartTime,
-        time,
-      );
-      isRecording = false;
+      isSavingBuffers = false;
       postMessageToMain({ command: "stopRecording", key });
     });
   }
@@ -173,11 +165,21 @@ export default new InlineWebWorker(() => {
     }, makeEmptyBuffer());
   }
 
-  function exportWAV(key: string, type: "audio/wav"): void {
+  function exportWAV(
+    key: string,
+    type: "audio/wav",
+    start: number,
+    end: number,
+  ): void {
     const buffers = [];
+    const lastFinishedBuffer = constrainBuffers(
+      currentRecordingBuffer,
+      start,
+      end,
+    );
     for (let channel = 0; channel < numberOfChannels; channel++) {
       const result = lastFinishedBuffer;
-      buffers.push(mergeBuffers(result[channel], recLength));
+      buffers.push(mergeBuffers(result[channel]));
     }
     const interleaved =
       numberOfChannels === 2 ? interleave(buffers[0], buffers[1]) : buffers[0];
@@ -187,7 +189,6 @@ export default new InlineWebWorker(() => {
   }
 
   function resetState(): void {
-    recLength = 0;
     currentRecordingBuffer = [];
     initBuffers();
   }
@@ -214,7 +215,7 @@ export default new InlineWebWorker(() => {
     inputBuffer: Types.MultiChannelBuffer,
     firstSampleStartTime: number,
   ): void {
-    if (!isRecording) {
+    if (!isSavingBuffers) {
       resetState();
     }
 
@@ -222,17 +223,14 @@ export default new InlineWebWorker(() => {
     for (let channel = 0; channel < numberOfChannels; channel++) {
       data.push(inputBuffer[channel]);
     }
-    recLength += inputBuffer[0].length;
     currentRecordingBuffer.push({ firstSampleStartTime, data });
     postRecordHooks.flush();
     postMessageToMain({ command: "record", key });
   }
 
-  function mergeBuffers(
-    recBuffers: Float32Array[],
-    recLength: number,
-  ): Float32Array {
-    const result = new Float32Array(recLength);
+  function mergeBuffers(recBuffers: Float32Array[]): Float32Array {
+    const length = recBuffers.reduce((prev, curr) => prev + curr.length, 0);
+    const result = new Float32Array(length);
     let offset = 0;
     for (const recBuffer of recBuffers) {
       result.set(recBuffer, offset);
