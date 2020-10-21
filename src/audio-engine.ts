@@ -48,17 +48,18 @@ class AudioEngine {
     mimeType: "audio/wav",
   };
 
+  private source: AudioNode | null = null;
   private audioContext: BaseAudioContext | null = null;
 
-  public initialize = async (
+  public primeRecorder = async (
     _source?: AudioNode,
     _config: Partial<Config> = {},
   ): Promise<void> => {
     console.log("Initializing Audio Engine....");
-    const source = _source || (await getDefaultSource());
+    this.source = _source || (await getDefaultSource());
     this.config = { ...this.config, ..._config };
 
-    const audioContext = source.context;
+    const audioContext = this.source.context;
     const node: ScriptProcessorNode = (
       audioContext.createScriptProcessor ||
       (audioContext as any).createJavaScriptNode
@@ -90,7 +91,7 @@ class AudioEngine {
       });
     };
 
-    source.connect(node);
+    this.source.connect(node);
     node.connect(audioContext.destination);
 
     this.audioContext = audioContext;
@@ -102,24 +103,28 @@ class AudioEngine {
     });
   };
 
-  private withAudioContext = (): Promise<BaseAudioContext> =>
-    new Promise((resolve, reject) =>
-      this.audioContext
-        ? resolve(this.audioContext)
-        : reject(new Error("You must run `initialize` first...")),
+  private withAudioContext = (
+    options: {
+      requireRecorder?: boolean;
+    } = {},
+  ): Promise<BaseAudioContext> =>
+    (options.requireRecorder
+      ? this.withRecorderInitialized()
+      : Promise.resolve()
+    ).then(() => this.audioContext || getAudioContext());
+
+  private withRecorderInitialized = (): Promise<void> =>
+    this.source ? Promise.resolve() : this.primeRecorder();
+
+  public startRecording = () =>
+    this.withAudioContext({ requireRecorder: true }).then(context =>
+      AudioWorker.startRecording({ time: context.currentTime }),
     );
 
-  public startRecording = () => {
-    return this.withAudioContext().then(context => {
-      return AudioWorker.startRecording({ time: context.currentTime });
-    });
-  };
-
-  public stopRecording = () => {
-    return this.withAudioContext().then(context => {
-      return AudioWorker.stopRecording({ time: context.currentTime });
-    });
-  };
+  public stopRecording = () =>
+    this.withAudioContext().then(context =>
+      AudioWorker.stopRecording({ time: context.currentTime }),
+    );
 
   public clear = () => {
     AudioWorker.clear({}); // TODO: don't do {}
@@ -169,7 +174,11 @@ class AudioEngine {
     ]);
 
   public schedule = (scheduledEvents: ScheduledAudioEvent.Event[]) =>
-    this.withAudioContext().then(context => {
+    this.withAudioContext({
+      requireRecorder: scheduledEvents.some(
+        event => event.type === ScheduledAudioEvent.Type.RecordEvent,
+      ),
+    }).then(context => {
       const { currentTime } = context;
 
       scheduledEvents.forEach(_ => {
@@ -214,19 +223,6 @@ class AudioEngine {
         });
       });
     });
-
-  public static forceDownload(
-    blob: Blob,
-    filename: string = "output.wav",
-  ): void {
-    console.log("blob", blob);
-    const url = window.URL.createObjectURL(blob);
-    const link = window.document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    window.URL.revokeObjectURL(url);
-  }
 }
 
 export default new AudioEngine();

@@ -9,7 +9,7 @@ import { createMonoSineWave } from "../src/utils/synth";
 
 interface ExampleState {
   maxRecordingTime: number;
-  isEngineReady: boolean;
+  isRecorderReady: boolean;
   isRecording: boolean;
   simpleRecordings: Blob[];
 }
@@ -20,15 +20,15 @@ class Example extends React.Component<any, ExampleState> {
     this.state = {
       simpleRecordings: [],
       maxRecordingTime: 5,
-      isEngineReady: false,
+      isRecorderReady: false,
       isRecording: false,
     };
-    AudioEngine.initialize().then(() => this.setState({ isEngineReady: true }));
+    AudioEngine.primeRecorder().then(() =>
+      this.setState({ isRecorderReady: true }),
+    );
   }
 
   private handleStartRecording = () => {
-    // AudioEngine.schedule([{ record: { timeRange: {} } }]);
-
     this.setState({ isRecording: true });
 
     AudioEngine.startRecording();
@@ -52,26 +52,18 @@ class Example extends React.Component<any, ExampleState> {
     <div>
       <button
         onClick={this.handleStartRecording}
-        disabled={!this.state.isEngineReady || this.state.isRecording}
+        disabled={!this.state.isRecorderReady || this.state.isRecording}
       >
         start recording
       </button>
       <button
         onClick={this.handleStopRecording}
-        disabled={!this.state.isEngineReady || !this.state.isRecording}
+        disabled={!this.state.isRecorderReady || !this.state.isRecording}
       >
         stop recording
       </button>
     </div>
   );
-
-  // private renderRecordings() {
-  //   if (!this.state.recordings) return null;
-  //   const recordings = this.state.recordings.map((recording, i) => (
-  //     <Recording recording={recording} key={`recording${i}`} />
-  //   ));
-  //   return <ul>{recordings}</ul>;
-  // }
 
   private renderMaxTimeout() {
     return (
@@ -157,7 +149,6 @@ class Example extends React.Component<any, ExampleState> {
       <div>
         {this.renderMaxTimeout()}
         {this.renderStartStop()}
-        {/* {this.renderRecordings()} */}
         {this.renderSimpleRecordings()}
         {this.renderScheduleTest()}
         {this.renderPlayImmediatelyTest()}
