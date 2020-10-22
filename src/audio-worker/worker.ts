@@ -27,7 +27,6 @@ export default new InlineWebWorker(() => {
   let numberOfChannels: number;
   let isSavingBuffers = false;
   let currentRecordingBuffer: Types.TimedBuffer[] = [];
-  const lastFinishedBuffer: Types.MultiChannelBuffer[] = [];
   const postRecordHooks = new Hooks();
 
   // TODO: types...
@@ -50,11 +49,14 @@ export default new InlineWebWorker(() => {
       case "stopRecording":
         stopRecording(e.data.key);
         break;
-      case "exportWAV":
-        exportWAV(e.data.key, e.data.mimeType, e.data.start, e.data.end);
+      case "extractRangeFromLastRecorded":
+        exportWAVLegacy(e.data.key, e.data.start, e.data.end);
         break;
       case "clear":
         clear(e.data.key);
+        break;
+      case "createWav":
+        createWav(e.data.key, e.data.rawAudioData);
         break;
     }
   };
@@ -91,7 +93,7 @@ export default new InlineWebWorker(() => {
     _buffers: Types.TimedBuffer[],
     desiredStart: number,
     desiredEnd: number,
-  ): Types.MultiChannelBuffer[] {
+  ): Float32Array[][] {
     const buffers = _buffers.slice();
     const bufferDuration = bufferLength / sampleRate;
     const sampleDuration = 1 / sampleRate;
@@ -156,7 +158,7 @@ export default new InlineWebWorker(() => {
 
   function transformTimedBufferToTransferable(
     timedBuffers: Types.TimedBuffer[],
-  ): Types.MultiChannelBuffer[] {
+  ): Float32Array[][] {
     return timedBuffers.reduce((previous, buffer) => {
       for (let channel = 0; channel < numberOfChannels; channel++) {
         previous[channel].push(buffer.data[channel]);
@@ -165,13 +167,19 @@ export default new InlineWebWorker(() => {
     }, makeEmptyBuffer());
   }
 
-  function exportWAV(
-    key: string,
-    type: "audio/wav",
-    start: number,
-    end: number,
-  ): void {
-    const buffers = [];
+  const createWav = (key: string, data: Float32Array[]): void => {
+    if (data.length > 2) {
+      throw new Error("Currently only a maximum of 2 channels is supported");
+    }
+    const interleaved =
+      data.length === 2 ? interleave(data[0], data[1]) : data[0];
+    const dataview = encodeWAV(interleaved);
+    const blob = new Blob([dataview], { type: "audio/wav" });
+    postMessageToMain({ command: "exportWAV", data: { blob }, key });
+  };
+
+  function exportWAVLegacy(key: string, start: number, end: number): void {
+    const buffers: Float32Array[] = [];
     const lastFinishedBuffer = constrainBuffers(
       currentRecordingBuffer,
       start,
@@ -181,11 +189,11 @@ export default new InlineWebWorker(() => {
       const result = lastFinishedBuffer;
       buffers.push(mergeBuffers(result[channel]));
     }
-    const interleaved =
-      numberOfChannels === 2 ? interleave(buffers[0], buffers[1]) : buffers[0];
-    const dataview = encodeWAV(interleaved);
-    const blob = new Blob([dataview], { type });
-    postMessageToMain({ command: "exportWAV", data: { blob }, key });
+    postMessageToMain({
+      command: "extractRangeFromLastRecorded",
+      data: { buffers },
+      key,
+    });
   }
 
   function resetState(): void {
@@ -198,7 +206,7 @@ export default new InlineWebWorker(() => {
     postMessageToMain({ command: "exportWAV", key });
   }
 
-  function makeEmptyBuffer(): Types.MultiChannelBuffer[] {
+  function makeEmptyBuffer(): Float32Array[][] {
     const array = [];
     for (let channel = 0; channel < numberOfChannels; channel++) {
       array[channel] = [];
@@ -212,14 +220,14 @@ export default new InlineWebWorker(() => {
 
   function record(
     key: string,
-    inputBuffer: Types.MultiChannelBuffer,
+    inputBuffer: Float32Array[],
     firstSampleStartTime: number,
   ): void {
     if (!isSavingBuffers) {
       resetState();
     }
 
-    const data: Types.MultiChannelBuffer = [];
+    const data: Float32Array[] = [];
     for (let channel = 0; channel < numberOfChannels; channel++) {
       data.push(inputBuffer[channel]);
     }

@@ -2,8 +2,9 @@ export namespace Literals {
   export type INIT = "init";
   export const INIT: INIT = "init";
 
-  export type EXPORT_WAV = "exportWAV";
-  export const EXPORT_WAV: EXPORT_WAV = "exportWAV";
+  export type EXTRACT_RANGE_FROM_LAST_RECORDED = "extractRangeFromLastRecorded";
+  export const EXTRACT_RANGE_FROM_LAST_RECORDED: EXTRACT_RANGE_FROM_LAST_RECORDED =
+    "extractRangeFromLastRecorded";
 
   export type RECORD = "record";
   export const RECORD: RECORD = "record";
@@ -16,16 +17,20 @@ export namespace Literals {
 
   export type CLEAR = "clear";
   export const CLEAR: CLEAR = "clear";
+
+  export type CREATE_WAV = "createWav";
+  export const CREATE_WAV: CREATE_WAV = "createWav";
 }
 
 export namespace Command {
   export type Name =
-    | Literals.EXPORT_WAV
+    | Literals.EXTRACT_RANGE_FROM_LAST_RECORDED
     | Literals.RECORD
     | Literals.START_RECORDING
     | Literals.STOP_RECORDING
     | Literals.INIT
-    | Literals.CLEAR;
+    | Literals.CLEAR
+    | Literals.CREATE_WAV;
 }
 
 export interface WorkerBaseInput<T extends Command.Name> {
@@ -55,24 +60,36 @@ export namespace StopRecording {
   export type WorkerInput = WorkerBaseInput<Literals.STOP_RECORDING>;
 }
 
-export namespace ExportWAV {
+export namespace ExtractRangeFromLastRecorded {
   export interface UserInput {
-    mimeType: "audio/wav";
     start: number;
     end: number;
   }
-  export type WorkerInput = WorkerBaseInput<Literals.EXPORT_WAV> & UserInput;
+  export type WorkerInput = WorkerBaseInput<
+    Literals.EXTRACT_RANGE_FROM_LAST_RECORDED
+  > &
+    UserInput;
   export interface WorkerOutput {
-    blob: Blob;
+    buffers: Float32Array[];
   }
 }
 
 export namespace Record {
   export interface UserInput {
-    buffer: MultiChannelBuffer;
+    buffer: Float32Array[];
     sampleStartTime: number;
   }
   export type WorkerInput = WorkerBaseInput<Literals.RECORD> & UserInput;
+}
+
+export namespace CreateWav {
+  export interface UserInput {
+    rawAudioData: Float32Array[];
+  }
+  export type WorkerInput = WorkerBaseInput<Literals.CREATE_WAV> & UserInput;
+  export interface WorkerOutput {
+    blob: Blob;
+  }
 }
 
 export type WorkerInputs =
@@ -80,10 +97,9 @@ export type WorkerInputs =
   | Clear.WorkerInput
   | StartRecording.WorkerInput
   | StopRecording.WorkerInput
-  | ExportWAV.WorkerInput
-  | Record.WorkerInput;
-
-export type MultiChannelBuffer = Float32Array[];
+  | ExtractRangeFromLastRecorded.WorkerInput
+  | Record.WorkerInput
+  | CreateWav.WorkerInput;
 
 export interface TimedBuffer {
   firstSampleStartTime: number;

@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import AudioEngine, {
+  Audio,
   PlayableAudioType,
   ScheduledAudioEventType,
 } from "../src";
@@ -34,18 +35,20 @@ class Example extends React.Component<any, ExampleState> {
     AudioEngine.startRecording();
   };
 
-  private appendRecordings = (blobs: Blob[]) =>
-    this.setState({
-      simpleRecordings: [...this.state.simpleRecordings, ...blobs],
-    });
+  private appendRecordings = (audios: Audio[]) =>
+    Promise.all(audios.map(audio => audio.toWAVBlob())).then(blobs =>
+      this.setState({
+        simpleRecordings: [...this.state.simpleRecordings, ...blobs],
+      }),
+    );
 
   private handleStopRecording = () => {
     AudioEngine.stopRecording()
       .then(() => {
         this.setState({ isRecording: false });
-        return AudioEngine.exportLastAsWavBlob();
+        return AudioEngine.exportLastRecording();
       })
-      .then(blob => this.appendRecordings([blob]))
+      .then(audio => this.appendRecordings([audio]))
       .then(() => AudioEngine.clear());
   };
 
@@ -160,9 +163,10 @@ class Example extends React.Component<any, ExampleState> {
               type: ScheduledAudioEventType.RecordEvent,
               timeRange: { start: { offset: 1 }, end: { offset: 1.2 } },
             },
-          ]).then(results =>
-            this.appendRecordings((results as any[]).filter(r => r !== null)),
-          );
+          ]).then(results => {
+            console.log("results", results);
+            this.appendRecordings((results as any[]).filter(r => r !== null));
+          });
         }}
       >
         test scheduled records

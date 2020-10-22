@@ -77,4 +77,16 @@ export namespace RawAudio {
       "Can't conform Raw Audio to AudioBuffer because that type wasn't handled.",
     );
   };
+
+  export const conformToSimpleRawAudioData = (
+    rawAudio: AllTypes,
+  ): Float32Array[] => {
+    if (isMonoArray(rawAudio) || isMonoFloat32Array(rawAudio)) {
+      return [new Float32Array(rawAudio)];
+    } else if (isStereoArray(rawAudio)) {
+      return [new Float32Array(rawAudio[0]), new Float32Array(rawAudio[1])];
+    }
+    // i.e., isStereoFloat32Array
+    return rawAudio;
+  };
 }

@@ -1,4 +1,5 @@
-import * as AudioWorker from "./audio-worker";
+import Audio from "./audio";
+import AudioWorker from "./audio-worker";
 import { DEFAULT_BUFFER_SIZE, DEFAULT_NUMBER_OF_CHANNELS } from "./constants";
 import { makeTimeoutPromise } from "./helpers";
 import { PlayableAudio } from "./playable-audio";
@@ -135,15 +136,14 @@ class AudioEngine {
     AudioWorker.clear({}); // TODO: don't do {}
   };
 
-  public exportLastAsWavBlob = (): Promise<Blob> => {
+  public exportLastRecording = (): Promise<Audio> => {
     if (!this.lastStart || !this.lastEnd) {
       throw new Error("Need to record something before trying to export...");
     }
-    return AudioWorker.exportWav({
-      mimeType: this.config.mimeType,
+    return AudioWorker.extractRangeFromLastRecorded({
       start: this.lastStart,
       end: this.lastEnd,
-    }).then(data => data.blob);
+    }).then(data => new Audio(data.buffers));
   };
 
   public getRelativeTime = (
@@ -187,7 +187,7 @@ class AudioEngine {
   // TODO: fix any
   public schedule = (
     scheduledEvents: ScheduledAudioEvent.Event[],
-  ): Promise<Array<Blob | null>> => {
+  ): Promise<Array<Audio | null>> => {
     const allRecordingEvents = scheduledEvents.filter(
       ScheduledAudioEvent.isRecord,
     );
@@ -201,7 +201,7 @@ class AudioEngine {
         // TODO: make sure no events overlap with each other -- and existing...
       });
 
-      const promises: Array<Promise<Blob | null>> = [];
+      const promises: Array<Promise<Audio | null>> = [];
 
       let recordingChunkPromise: Promise<void> | null = null;
 
@@ -232,8 +232,7 @@ class AudioEngine {
             recordingChunkPromise = recordingChunkPromise as Promise<void>;
 
             const promise = recordingChunkPromise.then(() =>
-              AudioWorker.exportWav({
-                mimeType: this.config.mimeType,
+              AudioWorker.extractRangeFromLastRecorded({
                 start: this.getRelativeTime(
                   context,
                   recordEvent.timeRange.start,
@@ -244,7 +243,7 @@ class AudioEngine {
                   recordEvent.timeRange.end,
                   currentTime,
                 ),
-              }).then(data => data.blob),
+              }).then(data => new Audio(data.buffers)),
             );
             promises.push(promise);
           },

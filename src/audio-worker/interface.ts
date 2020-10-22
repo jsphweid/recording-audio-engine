@@ -65,8 +65,14 @@ export const stopRecording = interfaceGenerator<Types.Literals.STOP_RECORDING>(
   Types.Literals.STOP_RECORDING,
 );
 
-export const exportWav = interfaceGenerator<
-  Types.Literals.EXPORT_WAV,
-  Types.ExportWAV.UserInput,
-  Types.ExportWAV.WorkerOutput
->(Types.Literals.EXPORT_WAV);
+export const extractRangeFromLastRecorded = interfaceGenerator<
+  Types.Literals.EXTRACT_RANGE_FROM_LAST_RECORDED,
+  Types.ExtractRangeFromLastRecorded.UserInput,
+  Types.ExtractRangeFromLastRecorded.WorkerOutput
+>(Types.Literals.EXTRACT_RANGE_FROM_LAST_RECORDED);
+
+export const createWav = interfaceGenerator<
+  Types.Literals.CREATE_WAV,
+  Types.CreateWav.UserInput,
+  Types.CreateWav.WorkerOutput
+>(Types.Literals.CREATE_WAV);
