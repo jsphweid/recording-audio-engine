@@ -50,7 +50,7 @@ export default new InlineWebWorker(() => {
         stopRecording(e.data.key);
         break;
       case "extractRangeFromLastRecorded":
-        exportWAVLegacy(e.data.key, e.data.start, e.data.end);
+        extractRangeFromLastRecorded(e.data.key, e.data.start, e.data.end);
         break;
       case "clear":
         clear(e.data.key);
@@ -94,6 +94,8 @@ export default new InlineWebWorker(() => {
     desiredStart: number,
     desiredEnd: number,
   ): Float32Array[][] {
+    console.log("_buffers", _buffers);
+    console.log("desiredStartend", desiredStart, desiredEnd);
     const buffers = _buffers.slice();
     const bufferDuration = bufferLength / sampleRate;
     const sampleDuration = 1 / sampleRate;
@@ -178,7 +180,11 @@ export default new InlineWebWorker(() => {
     postMessageToMain({ command: "exportWAV", data: { blob }, key });
   };
 
-  function exportWAVLegacy(key: string, start: number, end: number): void {
+  function extractRangeFromLastRecorded(
+    key: string,
+    start: number,
+    end: number,
+  ): void {
     const buffers: Float32Array[] = [];
     const lastFinishedBuffer = constrainBuffers(
       currentRecordingBuffer,

@@ -17,6 +17,16 @@ class Audio {
     AudioWorker.createWav({ rawAudioData: this.rawAudioData }).then(
       data => data.blob,
     );
+
+  public forceDownload = (filename = "output.wav"): Promise<void> =>
+    this.toWAVBlob().then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    });
 }
 
 export default Audio;

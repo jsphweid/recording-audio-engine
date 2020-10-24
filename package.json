@@ -2,7 +2,9 @@
   "name": "audio-engine",
   "version": "1.0.0",
   "description": "A simple library that handles the Audio Context by providing lots of convenience functions.",
-  "dependencies": {},
+  "dependencies": {
+    "waveform-react": "^0.2.3"
+  },
   "devDependencies": {
     "@types/jasmine": "^2.8.9",
     "@types/node": "^10.12.2",

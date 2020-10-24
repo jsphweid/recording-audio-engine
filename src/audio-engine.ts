@@ -9,7 +9,7 @@ import { Time } from "./time";
 const getAudioContext = (): AudioContext => {
   const win: any = window;
   win.AudioContext = win.AudioContext || win.webkitAudioContext;
-  return new win.AudioContext();
+  return new win.AudioContext({ latencyHint: "balanced" });
 };
 
 const getStreamAndAudioContext = (): Promise<{
@@ -19,7 +19,10 @@ const getStreamAndAudioContext = (): Promise<{
   // Important... Stream / AudioContext must be created in this particular order!
   return new Promise((resolve, reject) => {
     navigator.getUserMedia =
-      navigator.getUserMedia || (navigator as any).webkitGetUserMedia;
+      navigator.getUserMedia ||
+      (navigator as any).webkitGetUserMedia ||
+      (navigator as any).mozGetUserMedia ||
+      (navigator as any).msGetUserMedia;
 
     navigator.getUserMedia(
       { audio: true },
@@ -88,15 +91,18 @@ class AudioEngine {
     };
 
     node.onaudioprocess = e => {
+      const currentTime = audioContext.currentTime;
+      // This operates under the assumption that `onaudioprocess`
+      // is called the exact moment the buffer is finished
       const audioBuffer = e.inputBuffer;
       AudioWorker.record({
         buffer: createTransferableAudioBuffer(audioBuffer),
-        sampleStartTime: audioContext.currentTime - audioBuffer.duration,
+        sampleStartTime: currentTime - audioBuffer.duration,
       });
     };
 
     this.source.connect(node);
-    node.connect(audioContext.destination);
+    node.connect(audioContext.destination); // this shouldn't be necessary
 
     this.audioContext = audioContext;
 
@@ -184,6 +190,29 @@ class AudioEngine {
       },
     ]).then(results => results[0]);
 
+  private getPlaybackLatency = (
+    scheduledEvents: ScheduledAudioEvent.Event[],
+    context: AudioContext | BaseAudioContext,
+  ) => {
+    const numRecordEvents = scheduledEvents.filter(ScheduledAudioEvent.isRecord)
+      .length;
+    const numPlayEvents = scheduledEvents.filter(ScheduledAudioEvent.isPlay)
+      .length;
+    if (numRecordEvents === 0 || numPlayEvents === 0) {
+      // No need to adjust timings if there aren't both kinds of events
+      return 0;
+    }
+
+    // TOOD: this isn't correct and there are other problems on why things aren't lining up
+    const latency =
+      // only currently exists in firefox
+      (context as any).outputLatency ||
+      // not necessarily accurate, but seems to be close to `outputLatency`
+      context.currentTime - (context as any).getOutputTimestamp().contextTime;
+
+    return latency;
+  };
+
   // TODO: fix any
   public schedule = (
     scheduledEvents: ScheduledAudioEvent.Event[],
@@ -196,6 +225,7 @@ class AudioEngine {
       requireRecorder: containsAtLeastOnRecordEvent,
     }).then(context => {
       const { currentTime } = context;
+      const latency = this.getPlaybackLatency(scheduledEvents, context);
 
       scheduledEvents.forEach(_ => {
         // TODO: make sure no events overlap with each other -- and existing...
@@ -217,12 +247,16 @@ class AudioEngine {
           ),
         );
 
-        const startOffset = firstStart - currentTime - 0.1;
+        const padding = 0.1;
+
+        const startOffset = Math.max(firstStart - currentTime - padding, 0);
 
         recordingChunkPromise = makeTimeoutPromise(startOffset)
           .then(() => this.startRecording())
-          .then(() => makeTimeoutPromise(lastEnd - currentTime))
-          .then(() => this.stopRecording());
+          .then(() => makeTimeoutPromise(lastEnd - firstStart + 2 * padding))
+          .then(() => this.stopRecording())
+          .then(() => this.exportLastRecording())
+          .then(audio => audio.forceDownload());
       }
 
       scheduledEvents.forEach(event => {
@@ -231,20 +265,30 @@ class AudioEngine {
             // if we get here, this definitely is a promise...
             recordingChunkPromise = recordingChunkPromise as Promise<void>;
 
-            const promise = recordingChunkPromise.then(() =>
-              AudioWorker.extractRangeFromLastRecorded({
-                start: this.getRelativeTime(
-                  context,
-                  recordEvent.timeRange.start,
-                  currentTime,
-                ),
-                end: this.getRelativeTime(
-                  context,
-                  recordEvent.timeRange.end,
-                  currentTime,
-                ),
-              }).then(data => new Audio(data.buffers)),
-            );
+            const promise = recordingChunkPromise.then(() => {
+              const data = {
+                start:
+                  this.getRelativeTime(
+                    context,
+                    recordEvent.timeRange.start,
+                    currentTime,
+                  ) + latency,
+                end:
+                  this.getRelativeTime(
+                    context,
+                    recordEvent.timeRange.end,
+                    currentTime,
+                  ) + latency,
+              };
+
+              return AudioWorker.extractRangeFromLastRecorded(data).then(
+                data => {
+                  const audio = new Audio(data.buffers);
+                  audio.forceDownload();
+                  return audio;
+                },
+              );
+            });
             promises.push(promise);
           },
           play: playEvent => {
@@ -268,7 +312,6 @@ class AudioEngine {
                   currentTime,
                 )
               : startTime + source.buffer.length / source.buffer.sampleRate;
-
             const duration = endTime - startTime;
 
             // In the future, we could have an option here

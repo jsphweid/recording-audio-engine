@@ -8,4 +8,10 @@ Notable features include:
 - clear and flexible interface
 - high precision start/stop
 
+## TODO:
+
+- not lining up...
+- streaming
+- make it easy to plot
+
 ## Usage
