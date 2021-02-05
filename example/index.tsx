@@ -1,51 +1,80 @@
-import * as React from 'react'
-import * as ReactDOM from 'react-dom'
-import * as RecordingAudioEngine from '../src'
-import Recording from './recording'
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+
+import AudioEngine, {
+  Audio,
+  PlayableAudioType,
+  ScheduledAudioEventType,
+} from "../src";
+import { DEFAULT_SAMPLE_RATE } from "../src/constants";
+import { createMonoSineWave } from "../src/utils/synth";
 
 interface ExampleState {
-  recordings: RecordingAudioEngine.MonoRecording[]
-  maxRecordingTime: number
+  maxRecordingTime: number;
+  isRecorderReady: boolean;
+  isRecording: boolean;
+  simpleRecordings: Blob[];
 }
+
+const kernal = {
+  type: PlayableAudioType.Raw,
+  rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, 440, 1),
+  sampleRate: DEFAULT_SAMPLE_RATE,
+};
 
 class Example extends React.Component<any, ExampleState> {
   constructor(props: any) {
-    super(props)
+    super(props);
     this.state = {
-      recordings: [],
-      maxRecordingTime: 5
-    }
+      simpleRecordings: [],
+      maxRecordingTime: 5,
+      isRecorderReady: false,
+      isRecording: false,
+    };
+    AudioEngine.primeRecorder().then(() =>
+      this.setState({ isRecorderReady: true }),
+    );
   }
 
   private handleStartRecording = () => {
-    const { recordings, maxRecordingTime } = this.state
-    RecordingAudioEngine.Recording.startRecording(maxRecordingTime).then(
-      recording => {
-        this.setState({
-          recordings: [...recordings, recording]
-        })
-      }
-    )
-  }
+    this.setState({ isRecording: true });
 
-  private renderStartStop() {
-    return (
-      <div>
-        <button onClick={this.handleStartRecording}>start recording</button>
-        <button onClick={RecordingAudioEngine.Recording.stopRecording}>
-          stop recording
-        </button>
-      </div>
-    )
-  }
+    AudioEngine.startRecording();
+  };
 
-  private renderRecordings() {
-    if (!this.state.recordings) return null
-    const recordings = this.state.recordings.map((recording, i) => (
-      <Recording recording={recording} key={`recording${i}`} />
-    ))
-    return <ul>{recordings}</ul>
-  }
+  private appendRecordings = (audios: Audio[]) =>
+    Promise.all(audios.map(audio => audio.toWAVBlob())).then(blobs =>
+      this.setState({
+        simpleRecordings: [...this.state.simpleRecordings, ...blobs],
+      }),
+    );
+
+  private handleStopRecording = () => {
+    AudioEngine.stopRecording()
+      .then(() => {
+        this.setState({ isRecording: false });
+        return AudioEngine.exportLastRecording();
+      })
+      .then(audio => this.appendRecordings([audio]))
+      .then(() => AudioEngine.clear());
+  };
+
+  private renderStartStop = () => (
+    <div>
+      <button
+        onClick={this.handleStartRecording}
+        disabled={!this.state.isRecorderReady || this.state.isRecording}
+      >
+        start recording
+      </button>
+      <button
+        onClick={this.handleStopRecording}
+        disabled={!this.state.isRecorderReady || !this.state.isRecording}
+      >
+        stop recording
+      </button>
+    </div>
+  );
 
   private renderMaxTimeout() {
     return (
@@ -60,18 +89,184 @@ class Example extends React.Component<any, ExampleState> {
           value={this.state.maxRecordingTime}
         />
       </div>
-    )
+    );
   }
+
+  private renderSimpleRecordings = () => {
+    return this.state.simpleRecordings.length === 0 ? null : (
+      <ul>
+        {this.state.simpleRecordings.map((blob, i) => (
+          <li key={`audio-${i}`}>
+            <audio src={URL.createObjectURL(blob)} controls={true} />
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  private renderPlayImmediatelyTest = () => (
+    <div>
+      <button
+        onClick={() => {
+          AudioEngine.playImmediately({
+            type: PlayableAudioType.Raw,
+            rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, 1000, 1),
+            sampleRate: DEFAULT_SAMPLE_RATE,
+          }).then(result =>
+            console.log("play immediately test completed", result),
+          );
+        }}
+      >
+        test play immediately
+      </button>
+    </div>
+  );
+
+  private renderScheduleTest = () => {
+    const makePlayEvent = (
+      startOffset: number,
+      endOffset: number,
+      freq: number,
+    ) => ({
+      type: ScheduledAudioEventType.PlayEvent,
+      timeRange: {
+        start: { date: new Date(Date.now() + startOffset * 1000) },
+        end: { offset: endOffset },
+      },
+      data: {
+        type: PlayableAudioType.Raw,
+        rawData: createMonoSineWave(DEFAULT_SAMPLE_RATE, freq, 1),
+        sampleRate: DEFAULT_SAMPLE_RATE,
+      },
+    });
+
+    return (
+      <div>
+        <button
+          onClick={() => {
+            AudioEngine.schedule(
+              [200, 249, 329, 380, 500, 623, 1094, 1423].map((freq, i) =>
+                makePlayEvent(i / 10 + 0.3, i / 10 + 0.5, freq),
+              ),
+            ).then(results => console.log("schedule play completed", results));
+          }}
+        >
+          test schedule play
+        </button>
+      </div>
+    );
+  };
+
+  private renderTestScheduledRecords = () => (
+    <div>
+      <button
+        onClick={() => {
+          AudioEngine.schedule([
+            {
+              type: ScheduledAudioEventType.RecordEvent,
+              timeRange: { start: { offset: 0.2 }, end: { offset: 0.7 } },
+            },
+            {
+              type: ScheduledAudioEventType.RecordEvent,
+              timeRange: { start: { offset: 1 }, end: { offset: 1.2 } },
+            },
+          ]).then(results => {
+            console.log("results", results);
+            this.appendRecordings((results as any[]).filter(r => r !== null));
+          });
+        }}
+      >
+        test scheduled records
+      </button>
+    </div>
+  );
+
+  private renderTestScheduledRecordandPlay = () => {
+    return (
+      <div>
+        <button
+          onClick={() => {
+            AudioEngine.schedule([
+              {
+                type: ScheduledAudioEventType.RecordEvent,
+                timeRange: { start: { offset: 0.2 }, end: { offset: 0.4 } },
+              },
+              {
+                type: ScheduledAudioEventType.RecordEvent,
+                timeRange: { start: { offset: 0.6 }, end: { offset: 0.8 } },
+              },
+              {
+                type: ScheduledAudioEventType.RecordEvent,
+                timeRange: { start: { offset: 1 }, end: { offset: 1.2 } },
+              },
+              {
+                type: ScheduledAudioEventType.PlayEvent,
+                timeRange: { start: { offset: 0.2 }, end: { offset: 0.4 } },
+                data: kernal,
+              },
+              {
+                type: ScheduledAudioEventType.PlayEvent,
+                timeRange: { start: { offset: 0.6 }, end: { offset: 0.8 } },
+                data: kernal,
+              },
+              {
+                type: ScheduledAudioEventType.PlayEvent,
+                timeRange: { start: { offset: 1 }, end: { offset: 1.2 } },
+                data: kernal,
+              },
+            ]).then(results => {
+              console.log("results", results);
+              this.appendRecordings((results as any[]).filter(r => r !== null));
+            });
+          }}
+        >
+          test record and play
+        </button>
+      </div>
+    );
+  };
+
+  private renderSimpleTestScheduledRecordandPlay = () => {
+    return (
+      <div>
+        <button
+          onClick={() => {
+            AudioEngine.schedule([
+              {
+                type: ScheduledAudioEventType.RecordEvent,
+                timeRange: { start: { offset: 0.2 }, end: { offset: 0.4 } },
+              },
+              {
+                type: ScheduledAudioEventType.PlayEvent,
+                timeRange: { start: { offset: 0.2 }, end: { offset: 0.4 } },
+                data: kernal,
+              },
+            ]).then(results => {
+              console.log("results", results);
+              this.appendRecordings((results as any[]).filter(r => r !== null));
+            });
+          }}
+        >
+          test simple record and play
+        </button>
+      </div>
+    );
+  };
 
   public render() {
     return (
       <div>
         {this.renderMaxTimeout()}
         {this.renderStartStop()}
-        {this.renderRecordings()}
+        {this.renderSimpleRecordings()}
+        {this.renderScheduleTest()}
+        {this.renderPlayImmediatelyTest()}
+        {this.renderTestScheduledRecords()}
+        {this.renderTestScheduledRecordandPlay()}
+        {this.renderSimpleTestScheduledRecordandPlay()}
       </div>
-    )
+    );
   }
 }
 
-ReactDOM.render(<Example />, document.getElementById('example'))
+ReactDOM.render(<Example />, document.getElementById("example"));

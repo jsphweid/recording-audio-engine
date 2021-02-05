@@ -1,6 +1,8 @@
 {
   "extends": ["tslint:latest", "tslint-config-prettier"],
   "rules": {
+    "no-namespace": false,
+    "no-empty-interface": false,
     "no-submodule-imports": [true, "~"],
     "no-implicit-dependencies": false,
     "object-literal-sort-keys": false,

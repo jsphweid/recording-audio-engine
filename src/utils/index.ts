@@ -1,4 +1,3 @@
-import { makeSynthesizedMonoRecording } from "./synthesizer";
+import { createMonoSineWave } from "./synth";
 
-export * from "./misc";
-export { makeSynthesizedMonoRecording };
+export { createMonoSineWave };
